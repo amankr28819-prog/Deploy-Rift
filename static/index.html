@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NER-SAFE — AI-Based Landslide Risk Early Warning System (SIH 2026 PS 26001)</title>
+  
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+
+  <!-- Top Command Center Header -->
+  <header class="app-header">
+    <div class="brand-section">
+      <div class="brand-logo">N</div>
+      <div class="brand-title-wrap">
+        <h1>
+          NER-SAFE 
+          <span class="badge-mdoner">MDoNER • SIH 2026 PS 26001</span>
+        </h1>
+        <div class="brand-sub" id="brandTagline">
+          North Eastern Region – Smart AI-based Forecasting & Emergency System
+        </div>
+      </div>
+    </div>
+
+    <div class="header-status-bar">
+      <!-- Network / Offline Status -->
+      <div class="status-pill" id="networkStatusPill">
+        <div class="status-dot" id="networkDot"></div>
+        <span id="networkStatusText">ONLINE</span>
+      </div>
+
+      <!-- Demo Trigger Button -->
+      <button class="btn-demo-trigger" id="btnRunDemo">
+        <i data-lucide="play-circle"></i>
+        <span id="labelRunDemo">RUN DEMO SCENARIO</span>
+      </button>
+
+      <!-- Language Selector -->
+      <select class="select-control" id="langSelector">
+        <option value="English">🇬🇧 English</option>
+        <option value="Hindi">🇮🇳 हिंदी (Hindi)</option>
+        <option value="Assamese">🇮🇳 অসমীয়া (Assamese)</option>
+        <option value="Bengali">🇮🇳 বাংলা (Bengali)</option>
+        <option value="Mizo">🇮🇳 Mizo</option>
+        <option value="Khasi">🇮🇳 Khasi</option>
+        <option value="Manipuri">🇮🇳 ꯃꯅꯤꯄꯨꯔꯤ (Manipuri)</option>
+      </select>
+
+      <!-- User Role Selector -->
+      <select class="select-control" id="roleSelector">
+        <option value="ADMIN">🛡️ Admin Command</option>
+        <option value="RESPONSE_OFFICER" selected>🚨 Response Officer</option>
+        <option value="FIELD_OFFICER">📱 Field Officer</option>
+        <option value="CITIZEN">👤 Citizen</option>
+      </select>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <div class="app-container">
+    
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar-nav">
+      <div class="nav-group-title">COMMAND CENTER</div>
+      <a class="nav-item active" data-target="dashboard">
+        <i data-lucide="layout-dashboard" class="nav-icon"></i>
+        <span class="nav-text">Main Dashboard</span>
+      </a>
+      <a class="nav-item" data-target="gis-map-view">
+        <i data-lucide="map" class="nav-icon"></i>
+        <span class="nav-text">Live GIS Risk Map</span>
+      </a>
+      <a class="nav-item" data-target="ai-prediction">
+        <i data-lucide="cpu" class="nav-icon"></i>
+        <span class="nav-text">AI Risk Prediction</span>
+      </a>
+
+      <div class="nav-group-title">MONITORING & ALERTS</div>
+      <a class="nav-item" data-target="weather-monitoring">
+        <i data-lucide="cloud-rain" class="nav-icon"></i>
+        <span class="nav-text">Weather & Rainfall</span>
+      </a>
+      <a class="nav-item" data-target="alert-center">
+        <i data-lucide="bell" class="nav-icon"></i>
+        <span class="nav-text">Early Warning Alerts</span>
+      </a>
+      <a class="nav-item" data-target="field-reporting">
+        <i data-lucide="file-text" class="nav-icon"></i>
+        <span class="nav-text">Citizen & Field Reports</span>
+      </a>
+
+      <div class="nav-group-title">RESPONSE & ANALYTICS</div>
+      <a class="nav-item" data-target="infrastructure-risk">
+        <i data-lucide="shield-alert" class="nav-icon"></i>
+        <span class="nav-text">Infrastructure Risk</span>
+      </a>
+      <a class="nav-item" data-target="authority-dashboard">
+        <i data-lucide="building-2" class="nav-icon"></i>
+        <span class="nav-text">Authority Command</span>
+      </a>
+      <a class="nav-item" data-target="explainable-ai">
+        <i data-lucide="brain-circuit" class="nav-icon"></i>
+        <span class="nav-text">Explainable AI (XAI)</span>
+      </a>
+      <a class="nav-item" data-target="response-priority">
+        <i data-lucide="list-ordered" class="nav-icon"></i>
+        <span class="nav-text">Response Priority</span>
+      </a>
+      <a class="nav-item" data-target="historical-analysis">
+        <i data-lucide="line-chart" class="nav-icon"></i>
+        <span class="nav-text">Historical Analysis</span>
+      </a>
+      <a class="nav-item" data-target="satellite-monitoring">
+        <i data-lucide="satellite" class="nav-icon"></i>
+        <span class="nav-text">Satellite Monitor</span>
+      </a>
+      <a class="nav-item" data-target="risk-simulator">
+        <i data-lucide="sliders" class="nav-icon"></i>
+        <span class="nav-text">Landslide Simulator</span>
+      </a>
+    </nav>
+
+    <!-- Main Viewport -->
+    <main class="main-viewport">
+
+      <!-- MODULE 1: MAIN DASHBOARD -->
+      <section class="module-page active" id="dashboard">
+        <div class="grid-dashboard">
+          
+          <!-- Left Metric Panel -->
+          <div class="card" style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="card-header">
+              <div class="card-title"><i data-lucide="activity"></i> NER Risk Overview</div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <div style="background: #172036; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+                <div style="font-size: 11px; color: var(--text-secondary);">Highest Active Risk Zone</div>
+                <div style="font-size: 16px; font-weight: 700; color: #ef4444; margin-top: 2px;">Aizawl District (Mizoram)</div>
+                <div style="display: flex; gap: 8px; margin-top: 6px;">
+                  <span class="risk-badge CRITICAL">CRITICAL (87%)</span>
+                  <span style="font-size: 11px; color: var(--text-muted); align-self: center;">165mm / 24h</span>
+                </div>
+              </div>
+
+              <div style="background: #172036; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+                <div style="font-size: 11px; color: var(--text-secondary);">Monitored NER Locations</div>
+                <div style="font-size: 22px; font-weight: 800; color: #38bdf8;">8 States • 42 Districts</div>
+              </div>
+
+              <div style="background: #172036; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+                <div style="font-size: 11px; color: var(--text-secondary);">Critical Highways at Risk</div>
+                <div style="font-size: 15px; font-weight: 700; color: #f97316;">NH-6, NH-10, NH-27</div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Potential blockage affecting 88,000 citizens</div>
+              </div>
+            </div>
+
+            <!-- Priority Incident Ranking Quick View -->
+            <div style="margin-top: auto;">
+              <div style="font-size: 12px; font-weight: 700; margin-bottom: 8px; color: var(--text-secondary);">Response Priority Top Item</div>
+              <div class="priority-item">
+                <div>
+                  <div style="font-size: 12px; font-weight: 700;">#1 Aizawl Ridge Sector</div>
+                  <div style="font-size: 10px; color: var(--text-secondary);">Pop: 14,200 • Hospital Lifeline</div>
+                </div>
+                <span class="risk-badge CRITICAL">CRITICAL</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Center Visual GIS Map -->
+          <div class="dashboard-map-container">
+            <div id="gisMap"></div>
+            
+            <!-- Map Layer Toggles -->
+            <div class="map-layer-controls">
+              <div style="font-weight: 700; color: #fff; margin-bottom: 4px;">GIS Layers</div>
+              <label class="layer-toggle-item">
+                <input type="checkbox" id="layerLandslideRisk" checked> Landslide Risk Zones
+              </label>
+              <label class="layer-toggle-item">
+                <input type="checkbox" id="layerRainfall" checked> Rainfall Saturation
+              </label>
+              <label class="layer-toggle-item">
+                <input type="checkbox" id="layerSlope" checked> Steep Slope (&gt;30°)
+              </label>
+              <label class="layer-toggle-item">
+                <input type="checkbox" id="layerInfrastructure" checked> Highways & Bridges
+              </label>
+              <label class="layer-toggle-item">
+                <input type="checkbox" id="layerFieldReports" checked> Field Reports
+              </label>
+            </div>
+          </div>
+
+          <!-- Right Details & Live Alerts Panel -->
+          <div class="card" style="display: flex; flex-direction: column; gap: 12px; overflow-y: auto;">
+            <div class="card-header">
+              <div class="card-title"><i data-lucide="bell-ring"></i> Live Emergency Feed</div>
+              <span class="risk-badge CRITICAL" id="activeAlertCountBadge">2 CRITICAL ALERTS</span>
+            </div>
+
+            <div id="dashboardLiveAlertsFeed" style="display: flex; flex-direction: column; gap: 10px;">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+
+          <!-- Bottom Analytics Bar -->
+          <div class="card" style="grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+            <div>
+              <div class="card-title" style="margin-bottom: 8px;"><i data-lucide="cloud-rain"></i> 24h Rainfall Anomaly</div>
+              <div style="font-size: 20px; font-weight: 800; color: #38bdf8;">165 mm <span style="font-size: 12px; color: #ef4444; font-weight: 600;">(+42% above normal)</span></div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Heavy rainfall triggering slope saturation</div>
+            </div>
+            <div>
+              <div class="card-title" style="margin-bottom: 8px;"><i data-lucide="git-commit"></i> Soil Saturation Index</div>
+              <div style="font-size: 20px; font-weight: 800; color: #ef4444;">82% <span style="font-size: 12px; color: #ef4444; font-weight: 600;">(CRITICAL THRESHOLD)</span></div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Liquefaction potential high across 37° slopes</div>
+            </div>
+            <div>
+              <div class="card-title" style="margin-bottom: 8px;"><i data-lucide="wifi-off"></i> Low-Network Field Support</div>
+              <div style="font-size: 20px; font-weight: 800; color: #22c55e;">PWA Offline Cache Active</div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">0 pending reports in local queue</div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- MODULE 2: GIS RISK MAP FULL VIEW -->
+      <section class="module-page" id="gis-map-view">
+        <div class="card" style="flex: 1; display: flex; flex-direction: column;">
+          <div class="card-header">
+            <div class="card-title"><i data-lucide="map-pin"></i> Interactive NER GIS Landslide Risk Map</div>
+            <div style="display: flex; gap: 10px;">
+              <select class="select-control" id="gisStateFilter">
+                <option value="ALL">All NER States (8)</option>
+                <option value="Mizoram">Mizoram</option>
+                <option value="Nagaland">Nagaland</option>
+                <option value="Meghalaya">Meghalaya</option>
+                <option value="Sikkim">Sikkim</option>
+                <option value="Assam">Assam</option>
+                <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+                <option value="Manipur">Manipur</option>
+                <option value="Tripura">Tripura</option>
+              </select>
+            </div>
+          </div>
+          <div id="fullGisMap" style="flex: 1; border-radius: 8px; overflow: hidden; min-height: 450px;"></div>
+        </div>
+      </section>
+
+      <!-- MODULE 3: AI RISK PREDICTION -->
+      <section class="module-page" id="ai-prediction">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i data-lucide="cpu"></i> AI Landslide Risk Prediction Engine</div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <!-- Predictor Inputs -->
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+              <div class="form-group">
+                <label class="form-label">24-Hour Cumulative Rainfall (mm)</label>
+                <input type="number" class="form-input" id="inputRainfall" value="165">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Soil Moisture Saturation (%)</label>
+                <input type="number" class="form-input" id="inputSoilMoisture" value="82">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Terrain Slope Steepness (°)</label>
+                <input type="number" class="form-input" id="inputSlope" value="37">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Elevation (meters)</label>
+                <input type="number" class="form-input" id="inputElevation" value="1132">
+              </div>
+              <button class="btn-primary" id="btnCalculatePrediction">Compute AI Risk Score</button>
+            </div>
+
+            <!-- Prediction Result & XAI -->
+            <div style="background: #172036; padding: 20px; border-radius: 8px; border: 1px solid var(--border-color);">
+              <div style="font-size: 12px; color: var(--text-secondary);">Calculated Risk Score</div>
+              <div style="font-size: 36px; font-weight: 800; color: #ef4444;" id="predProbabilityText">87.0%</div>
+              <div style="margin-top: 4px;" id="predRiskBadgeWrap"><span class="risk-badge CRITICAL">CRITICAL RISK</span></div>
+              
+              <div style="margin-top: 16px; font-size: 12px; color: var(--text-secondary);" id="predExplanationText">
+                Heavy rainfall and high soil saturation are currently the primary contributors to landslide risk.
+              </div>
+
+              <div style="margin-top: 20px;" id="predXaiBarsContainer">
+                <!-- XAI Bars rendered by JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MODULE 4: WEATHER & RAINFALL -->
+      <section class="module-page" id="weather-monitoring">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i data-lucide="cloud-rain"></i> NER Weather & Monsoonal Rainfall Analytics</div>
+          </div>
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+            <div>
+              <canvas id="weatherChart" height="200"></canvas>
+            </div>
+            <div style="background: #172036; padding: 16px; border-radius: 8px;">
+              <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 12px;">Causal Physics Pipeline</div>
+              <div style="display: flex; flex-direction: column; gap: 10px; font-size: 12px;">
+                <div style="padding: 8px; background: #0f172a; border-radius: 6px; border-left: 3px solid #38bdf8;">
+                  🌧️ Torrential Rainfall (165mm)
+                </div>
+                <div style="text-align: center; color: var(--text-muted);">↓</div>
+                <div style="padding: 8px; background: #0f172a; border-radius: 6px; border-left: 3px solid #eab308;">
+                  💧 Soil Saturation (82%)
+                </div>
+                <div style="text-align: center; color: var(--text-muted);">↓</div>
+                <div style="padding: 8px; background: #0f172a; border-radius: 6px; border-left: 3px solid #f97316;">
+                  ⛰️ Slope Instability (37°)
+                </div>
+                <div style="text-align: center; color: var(--text-muted);">↓</div>
+                <div style="padding: 8px; background: #0f172a; border-radius: 6px; border-left: 3px solid #ef4444; font-weight: 700;">
+                  🚨 Landslide Trigger (87% Prob)
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MODULE 5: ALERT CENTER -->
+      <section class="module-page" id="alert-center">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i data-lucide="bell"></i> Emergency Early Warning Dispatch Center</div>
+          </div>
+          <div id="fullAlertsList" style="display: flex; flex-direction: column; gap: 12px;">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- MODULE 6: FIELD REPORTING (PWA OFFLINE MODE) -->
+      <section class="module-page" id="field-reporting">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i data-lucide="file-text"></i> Citizen & Field Officer Incident Reporting (PWA Support)</div>
+            <span class="risk-badge LOW" id="offlineStatusBadge">ONLINE MODE</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <form id="fieldReportForm">
+              <div class="form-group">
+                <label class="form-label">Reporter Name</label>
+                <input type="text" class="form-input" id="reportName" value="Officer T. Zothan" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Incident Type</label>
+                <select class="form-select" id="reportType">
+                  <option>Landslide & Debris Flow</option>
+                  <option>Road Blockage</option>
+                  <option>Rockfall Hazard</option>
+                  <option>Soil / Retaining Wall Crack</option>
+                  <option>Water Seepage / Mudflow</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Location / Highway Sector</label>
+                <input type="text" class="form-input" id="reportLocation" value="NH-6 Km 42 Aizawl Pass" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Severity Level</label>
+                <select class="form-select" id="reportSeverity">
+                  <option value="Critical">Critical</option>
+                  <option value="High">High</option>
+                  <option value="Moderate">Moderate</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Field Description</label>
+                <textarea class="form-textarea" id="reportDescription" rows="3" required>Debris accumulation on NH-6 shoulder following heavy rain.</textarea>
+              </div>
+              <button type="submit" class="btn-primary">Submit Report (Auto-Syncs Offline)</button>
+            </form>
+
+            <div style="background: #172036; padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+              <div style="font-weight: 700; margin-bottom: 12px;">Submitted Field Incidents Feed</div>
+              <div id="fieldReportsList" style="display: flex; flex-direction: column; gap: 10px;">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MODULE 7: INFRASTRUCTURE RISK -->
+      <section class="module-page" id="infrastructure-risk">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i data-lucide="shield-alert"></i> Highway & Lifeline Infrastructure Vulnerability Matrix</div>
+          </div>
+          <table style="width: 100%; text-align: left; border-collapse: collapse; font-size: 13px;">
+            <thead>
+              <tr style="border-bottom: 1px solid var(--border-color); color: var(--text-secondary);">
+                <th style="padding: 10px;">Asset Name</th>
+                <th style="padding: 10px;">Type</th>
+                <th style="padding: 10px;">Risk Level</th>
+                <th style="padding: 10px;">Status</th>
+                <th style="padding: 10px;">Affected Pop.</th>
+                <th style="padding: 10px;">Nearest Hospital</th>
+              </tr>
+            </thead>
+            <tbody id="infrastructureTableBody">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- MODULE 8: AUTHORITY COMMAND DASHBOARD -->
+      <section class="module-page" id="authority-dashboard">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i data-lucide="building-2"></i> MDoNER Disaster Authority Command Center</div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px;">
+            <div style="background: #172036; padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+              <div style="font-size: 11px; color: var(--text-secondary);">Total Monitored Zones</div>
+              <div style="font-size: 24px; font-weight: 800; color: #38bdf8;">42 Districts</div>
+            </div>
+            <div style="background: #172036; padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+              <div style="font-size: 11px; color: var(--text-secondary);">Critical Risk Areas</div>
+              <div style="font-size: 24px; font-weight: 800; color: #ef4444;">3 Zones</div>
+            </div>
+            <div style="background: #172036; padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+              <div style="font-size: 11px; color: var(--text-secondary);">Active SDRF Teams</div>
+              <div style="font-size: 24px; font-weight: 800; color: #22c55e;">12 Deployed</div>
+            </div>
+            <div style="background: #172036; padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+              <div style="font-size: 11px; color: var(--text-secondary);">Lifeline Highways at Risk</div>
+              <div style="font-size: 24px; font-weight: 800; color: #f97316;">NH-6, NH-10</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MODULE 9: EXPLAINABLE AI -->
+      <section class="module-page" id="explainable-ai">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i data-lucide="brain-circuit"></i> Explainable AI (XAI) Model Feature Attribution</div>
+          </div>
+          <div style="padding: 16px; background: #172036; border-radius: 8px;">
+            <div style="font-size: 14px; font-weight: 700; margin-bottom: 16px;">Landslide Risk Factor Weights (SHAP Analysis)</div>
+            <div id="fullXaiContainer">
+              <!-- Populated by JS -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MODULE 10: RESPONSE PRIORITY -->
+      <section class="module-page" id="response-priority">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i data-lucide="list-ordered"></i> Smart Emergency Response Prioritization Matrix</div>
+          </div>
+          <div class="priority-list" id="fullPriorityList">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </section>
+
+      <!-- MODULE 11: HISTORICAL ANALYSIS -->
+      <section class="module-page" id="historical-analysis">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i data-lucide="line-chart"></i> Historical NER Landslide & Rainfall Trends (2021 - 2025)</div>
+          </div>
+          <canvas id="historicalChart" height="150"></canvas>
+        </div>
+      </section>
+
+      <!-- MODULE 12: SATELLITE MONITORING -->
+      <section class="module-page" id="satellite-monitoring">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i data-lucide="satellite"></i> Satellite Surface Deformation & Scar Detection</div>
+          </div>
+          <div class="satellite-comparison-container">
+            <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop&q=80" class="satellite-img" alt="Before">
+            <img src="https://images.unsplash.com/photo-1511497584788-8767611136f6?w=800&auto=format&fit=crop&q=80" class="satellite-img satellite-after" alt="After" id="satAfterImg">
+            <div class="slider-handle" id="satSliderHandle"></div>
+          </div>
+          <div style="margin-top: 12px; font-size: 12px; color: var(--text-secondary);">
+            🛰️ Drag slider to compare pre-monsoon vs post-deluge SAR satellite imagery. Detected 14.2mm surface displacement on Aizawl Ridge Sector.
+          </div>
+        </div>
+      </section>
+
+      <!-- MODULE 13: LANDSLIDE RISK SIMULATOR -->
+      <section class="module-page" id="risk-simulator">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i data-lucide="sliders"></i> Interactive Monsoonal Landslide Risk Simulator</div>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <div>
+                <label class="form-label" id="simRainfallLabel">Rainfall: 165 mm</label>
+                <input type="range" min="10" max="300" value="165" style="width: 100%;" id="simRainfallSlider">
+              </div>
+              <div>
+                <label class="form-label" id="simSoilLabel">Soil Saturation: 82%</label>
+                <input type="range" min="10" max="100" value="82" style="width: 100%;" id="simSoilSlider">
+              </div>
+              <div>
+                <label class="form-label" id="simSlopeLabel">Slope: 37°</label>
+                <input type="range" min="5" max="60" value="37" style="width: 100%;" id="simSlopeSlider">
+              </div>
+            </div>
+            <div style="background: #172036; padding: 20px; border-radius: 8px; border: 1px solid var(--border-color); text-align: center; display: flex; flex-direction: column; justify-content: center;">
+              <div style="font-size: 12px; color: var(--text-secondary);">Simulated Risk Gauge</div>
+              <div style="font-size: 48px; font-weight: 800; color: #ef4444;" id="simProbResult">87.0%</div>
+              <div style="margin-top: 6px;" id="simBadgeWrap"><span class="risk-badge CRITICAL">CRITICAL RISK</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+  <!-- Application Logic JavaScript -->
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
