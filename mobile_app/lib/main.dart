@@ -7,10 +7,7 @@ import 'views/main_shell.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize Local Push Notifications
   await NotificationService.init();
-
   runApp(const NerSafeMobileApp());
 }
 
@@ -19,15 +16,19 @@ class NerSafeMobileApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => AppProvider()),
-      ],
-      child: MaterialApp(
-        title: 'NER-SAFE Mobile',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.darkTheme,
-        home: const MainShell(),
+    return ChangeNotifierProvider(
+      create: (_) => AppProvider(),
+      child: Consumer<AppProvider>(
+        builder: (context, provider, _) {
+          return MaterialApp(
+            title: 'NER-SAFE Mobile',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            themeMode: provider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+            home: const MainShell(),
+          );
+        },
       ),
     );
   }
