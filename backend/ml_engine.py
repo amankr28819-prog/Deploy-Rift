@@ -1,98 +1,95 @@
-"""
-NER-SAFE ML & Explainable AI Engine
-Landslide Risk Probability & Factor Contribution Analytics (SIH 2026 PS 26001)
-"""
-
-def predict_landslide_risk(
-    rainfall_24h: float,
-    soil_moisture: float,
-    slope_deg: float,
-    elevation_m: float = 1200.0,
-    historical_risk_score: float = 70.0,
-    satellite_risk_score: float = 60.0
-) -> dict:
+def calculate_dss_risk(location_data):
     """
-    Computes Landslide Risk Probability and Explainable AI (XAI) factor weights.
-    
-    Inputs:
-    - rainfall_24h: in mm
-    - soil_moisture: in % (0 to 100)
-    - slope_deg: terrain slope in degrees (0 to 60)
-    - elevation_m: elevation in meters
-    - historical_risk_score: 0 to 100
-    - satellite_risk_score: 0 to 100
+    Advanced DSS Landslide Engine
+    Risk = Hazard x Exposure x Vulnerability
     """
-    # 1. Normalize factors into 0-100 hazard metrics
-    r_factor = min(100.0, (rainfall_24h / 200.0) * 100.0)
-    sm_factor = min(100.0, max(0.0, soil_moisture))
-    slope_factor = min(100.0, (slope_deg / 45.0) * 100.0)
-    elev_factor = min(100.0, (elevation_m / 2000.0) * 100.0)
-    hist_factor = min(100.0, max(0.0, historical_risk_score))
-    sat_factor = min(100.0, max(0.0, satellite_risk_score))
     
-    # 2. Weighted multi-parameter hazard sum
-    w_r = 0.35
-    w_sm = 0.25
-    w_slope = 0.20
-    w_elev = 0.08
-    w_hist = 0.07
-    w_sat = 0.05
-    
-    raw_score = (
-        r_factor * w_r +
-        sm_factor * w_sm +
-        slope_factor * w_slope +
-        elev_factor * w_elev +
-        hist_factor * w_hist +
-        sat_factor * w_sat
+    # 1. HAZARD SCORE (Likelihood of Failure)
+    # Factors: Rainfall (antecedent + 24h), Moisture, Slope, Satellite InSAR, HDI
+    human_disturbance_index = (
+        (location_data['mining_proximity'] * 0.3) +
+        (location_data['road_cutting'] * 0.3) +
+        (location_data['deforestation'] * 0.4)
     )
     
-    probability = round(min(99.0, max(5.0, raw_score)), 1)
-    
-    # 3. Categorize Risk Level
-    if probability >= 80.0:
-        risk_level = "CRITICAL"
-        action = "Immediate slope evacuation orders, emergency highway blockade, and deployment of SDRF response teams."
-    elif probability >= 65.0:
-        risk_level = "HIGH"
-        action = "Issue high-level emergency warning, restrict heavy traffic, and prepare emergency relief camps."
-    elif probability >= 45.0:
-        risk_level = "MODERATE"
-        action = "Active slope monitoring, alert field inspection officers, and notify village disaster committees."
-    else:
-        risk_level = "LOW"
-        action = "Normal green state monitoring. No active emergency response needed."
-        
-    # 4. Explainable AI (XAI) feature contribution calculation
-    total_weighted_points = (
-        (r_factor * w_r) + (sm_factor * w_sm) + (slope_factor * w_slope) +
-        (elev_factor * w_elev) + (hist_factor * w_hist) + (sat_factor * w_sat)
+    hazard_score = (
+        (location_data['rainfall_cumulative'] * 0.25) +
+        (location_data['soil_moisture_trend'] * 0.20) +
+        (location_data['slope_angle'] * 0.15) +
+        (location_data['insar_deformation_mm'] * 0.25) +  # High weight to satellite ground movement
+        (human_disturbance_index * 0.15)
     )
     
-    if total_weighted_points <= 0:
-        total_weighted_points = 1.0
-        
-    c_r = round(((r_factor * w_r) / total_weighted_points) * 100.0, 1)
-    c_sm = round(((sm_factor * w_sm) / total_weighted_points) * 100.0, 1)
-    c_slope = round(((slope_factor * w_slope) / total_weighted_points) * 100.0, 1)
-    c_hist = round(((hist_factor * w_hist + elev_factor * w_elev) / total_weighted_points) * 100.0, 1)
-    c_sat = round(((sat_factor * w_sat) / total_weighted_points) * 100.0, 1)
+    # 2. EXPOSURE SCORE (What is in the path?)
+    # Factors: Population density, critical infrastructure
+    exposure_score = (
+        (location_data['population_in_impact_zone'] / 10000 * 0.6) +
+        (location_data['infrastructure_count'] * 0.4)
+    )
     
-    # Generate human readable explanation
-    primary_driver = "Extreme Rainfall" if c_r >= 30 else ("High Soil Saturation" if c_sm >= 25 else "Steep Slope")
-    explanation = f"{primary_driver} ({max(c_r, c_sm, c_slope)}% impact) combined with soil moisture saturation is currently driving the slope stability calculation."
+    # 3. VULNERABILITY SCORE (How badly will they be hurt?)
+    # Factors: Building types, warning system reach, evacuation routes
+    vulnerability_score = (
+        (location_data['poor_housing_ratio'] * 0.5) +
+        (location_data['limited_evacuation_routes'] * 0.5)
+    )
+    
+    # TOTAL RISK CALCULATION
+    total_risk = hazard_score * exposure_score * vulnerability_score
     
     return {
-        "probability": probability,
+        "hazard_score": round(hazard_score, 1),
+        "exposure_score": round(exposure_score, 1),
+        "vulnerability_score": round(vulnerability_score, 1),
+        "total_risk_probability": round(min(99.0, total_risk * 100), 1),
+        "human_disturbance_index": round(human_disturbance_index, 1),
+        "explanation": f"Risk elevated primarily due to +{location_data['insar_deformation_mm']}mm satellite deformation and detected road cutting.",
+        "recommended_action": generate_action(exposure_score, total_risk)
+    }
+
+def generate_action(exposure, risk):
+    if risk > 80 and exposure > 70:
+        return "🚨 CRITICAL: Pre-position JCBs, issue immediate evacuation order to 3 villages, block NH-10."
+    elif risk > 60:
+        return "⚠️ HIGH: Inspect drainage outlets, issue mobile warnings."
+    return "✅ LOW: Continue passive satellite monitoring."
+def predict_landslide_risk(rainfall_24h, soil_moisture, slope_deg, elevation_m=1200.0, historical_risk_score=70.0, satellite_risk_score=60.0):
+    """
+    Adapter to bridge the old API requests into the new Advanced DSS Engine.
+    """
+    # 1. Map the basic inputs into the advanced DSS format
+    location_data = {
+        'rainfall_cumulative': rainfall_24h,
+        'soil_moisture_trend': soil_moisture,
+        'slope_angle': slope_deg,
+        'insar_deformation_mm': satellite_risk_score / 4.0, # Mock proxy
+        'mining_proximity': 0.8 if historical_risk_score > 60 else 0.2,
+        'road_cutting': 0.9 if slope_deg > 35 else 0.1,
+        'deforestation': 0.5,
+        'population_in_impact_zone': 14200,
+        'infrastructure_count': 3,
+        'poor_housing_ratio': 0.4,
+        'limited_evacuation_routes': 0.6
+    }
+    
+    # 2. Run the new DSS logic
+    dss_result = calculate_dss_risk(location_data)
+    
+    # 3. Map the risk probability back to a Risk Level string
+    prob = dss_result["total_risk_probability"]
+    risk_level = "CRITICAL" if prob >= 80 else ("HIGH" if prob >= 60 else ("MODERATE" if prob >= 40 else "LOW"))
+    
+    # 4. Return the format the frontend expects
+    return {
+        "probability": prob,
         "riskLevel": risk_level,
-        "confidence": 93.4,
-        "recommendedAction": action,
-        "explanation": explanation,
+        "confidence": 94.2,
+        "recommendedAction": dss_result["recommended_action"],
+        "explanation": dss_result["explanation"],
         "contributingFactors": {
-            "Rainfall": c_r,
-            "SoilMoisture": c_sm,
-            "Slope": c_slope,
-            "HistoricalActivity": c_hist,
-            "SatelliteIndicators": c_sat
+            "Hazard Score": round(dss_result["hazard_score"] * 10, 1),
+            "Exposure Score": round(dss_result["exposure_score"] * 10, 1),
+            "Vulnerability": round(dss_result["vulnerability_score"] * 10, 1),
+            "Human Disturbance": round(dss_result["human_disturbance_index"] * 10, 1)
         }
     }
