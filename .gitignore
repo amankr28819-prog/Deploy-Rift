@@ -20,3 +20,6 @@ Thumbs.db
 # Environment variables
 .env
 .env.local
+__pycache__/
+*.pyc
+repomix-output.xml
