@@ -152,6 +152,36 @@
                 <div style="font-size: 12px; font-weight: 600; color: var(--text-accent); margin-top: 2px;" id="nearestRiskDistance">—</div>
               </div>
 
+              <!-- Active Regional Landslide Prediction Card (Evaluated by RIFT Model) -->
+              <div class="card-inner-box" id="dashActivePredictionCard" style="padding: 12px; border-left: 3px solid #38bdf8;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <div style="font-size: 10.5px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px;">
+                    Active Landslide Risk Prediction
+                  </div>
+                  <span class="risk-badge" id="dashActiveRiskBadge" style="font-size: 9px; padding: 2px 6px;">EVALUATING</span>
+                </div>
+                <div style="font-size: 15px; font-weight: 800; color: var(--text-primary); margin-top: 2px;" id="dashActiveLocationTitle">
+                  Loading Active Location...
+                </div>
+                <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 6px;" id="dashActiveLocationState">
+                  Northeast India Region
+                </div>
+                <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;">
+                  <span style="font-size: 22px; font-weight: 800; color: var(--text-accent);" id="dashActiveRiskScore">0.0%</span>
+                  <span style="font-size: 10px; color: var(--text-muted);" id="dashActiveScoreLabel">Model Hazard Probability</span>
+                </div>
+                <!-- Real Evaluated Factors Grid -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 10.5px; margin-bottom: 6px; padding: 6px 8px; background: rgba(255,255,255,0.03); border-radius: 4px; border: 1px solid var(--border-color);">
+                  <div>Slope: <b id="dashActiveSlope">—</b></div>
+                  <div>Elevation: <b id="dashActiveElevation">—</b></div>
+                  <div>Rainfall: <b id="dashActiveRainfall">—</b></div>
+                  <div>Soil: <b id="dashActiveSoil">—</b></div>
+                </div>
+                <div style="font-size: 10.5px; color: var(--text-secondary); line-height: 1.35;" id="dashActiveExplanation">
+                  Awaiting region evaluation from RIFT machine learning pipeline...
+                </div>
+              </div>
+
               <div class="card-inner-box" style="padding: 12px;">
                 <div style="font-size: 11px; color: var(--text-secondary);">Monitored NER Locations</div>
                 <div style="font-size: 22px; font-weight: 800; color: var(--text-accent);">8 States • 78 Districts</div>
@@ -605,58 +635,12 @@
                     <option value="">Select State First</option>
                   </select>
                 </div>
-              </div>
 
-              <!-- Dedicated Factor Information Section (Displayed before prediction upon district selection) -->
-              <div id="districtFactorsPreviewBox" style="display: none; padding: 16px; border-radius: 8px; background: var(--bg-card-inner); border: 1px solid var(--border-color); margin-top: 14px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
-                  <div>
-                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px;">
-                      Selected Location & Verified Physical Risk Factors
-                    </div>
-                    <div style="font-size: 16px; font-weight: 800; color: var(--text-primary); margin-top: 2px;" id="factorPreviewLocationTitle">
-                      Select a District
-                    </div>
-                  </div>
-                  <span class="factor-source-badge badge-green" id="factorPreviewStatusBadge" style="font-size: 10px;">
-                    Verified Data
-                  </span>
-                </div>
-
-                <!-- Verified Factors Grid -->
-                <div id="factorPreviewGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px;">
-                  <!-- Populated by JS -->
-                </div>
-
-                <!-- Predict Risk Button Action -->
-                <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
-                  <button type="button" class="btn-primary" id="btnPredictDistrictRisk" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 24px; height: 42px; font-size: 13px; font-weight: 700; cursor: pointer;">
-                    <i data-lucide="cpu"></i>
+                <div style="display: flex; align-items: flex-end;">
+                  <button type="button" class="btn btn-primary" id="btnPredictDistrictRisk" style="height: 38px; padding: 0 20px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 6px;" disabled>
+                    <i data-lucide="zap" style="width: 15px; height: 15px;"></i>
                     <span>Predict Risk</span>
                   </button>
-                </div>
-              </div>
-
-              <!-- Prediction Result Banner -->
-              <div id="districtPredResultBox" style="display: none; padding: 16px; border-radius: 8px; background: var(--bg-card-inner); border: 1px solid var(--border-highlight); margin-top: 14px;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
-                  <div>
-                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">
-                      Evaluated Landslide Risk Assessment
-                    </div>
-                    <div style="font-size: 24px; font-weight: 800; margin-top: 2px; display: flex; align-items: center; gap: 10px;">
-                      <span id="predResultLocationTitle">Location</span>
-                      <span class="risk-badge HIGH" id="predResultRiskBadge">HIGH</span>
-                    </div>
-                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;" id="predResultExplanation">
-                      Representative physical factors evaluated.
-                    </div>
-                  </div>
-                  <div style="text-align: right;">
-                    <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Risk Score</div>
-                    <div style="font-size: 32px; font-weight: 800; color: var(--text-accent);" id="predResultScore">0.0</div>
-                    <div style="font-size: 10px; color: var(--text-muted);">out of 100 points</div>
-                  </div>
                 </div>
               </div>
             </div>
