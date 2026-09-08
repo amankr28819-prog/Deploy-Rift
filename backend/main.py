@@ -27,6 +27,9 @@ from backend.weather_service import (
 from backend.ai_risk_service import predict_ai_risk, get_model_bundle
 from backend.gis_service import get_filtered_district_risk_geojson
 from backend.source_registry import SOURCE_REGISTRY, build_provenance, get_source
+from backend.report_service import get_all_reports, add_report, update_report_status
+from backend.alert_service import generate_live_alerts
+from backend.xai_service import get_global_feature_importance, evaluate_landslide_simulation
 
 app = FastAPI(
     title="NER-SAFE API Server",
@@ -67,41 +70,17 @@ class FieldReportRequest(BaseModel):
     reporterRole: str
     incidentType: str
     locationName: str
-    lat: float
-    lng: float
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    district: Optional[str] = None
+    state: Optional[str] = None
     severity: str
     description: str
     photoBase64: Optional[str] = None
 
-# Store field reports in memory
-FIELD_REPORTS_DB = [
-    {
-        "id": "report-101",
-        "reporterName": "Officer T. Zothan",
-        "reporterRole": "FIELD OFFICER",
-        "incidentType": "Road Blockage & Mudslide",
-        "locationName": "NH-6 Km 42 (Aizawl Link)",
-        "lat": 23.73,
-        "lng": 92.72,
-        "severity": "High",
-        "status": "Verified",
-        "submittedAgo": "18 minutes ago",
-        "description": "Debris and mud accumulation blocking northbound lane after continuous 120mm rainfall."
-    },
-    {
-        "id": "report-102",
-        "reporterName": "Citizen L. Sangma",
-        "reporterRole": "CITIZEN",
-        "incidentType": "Soil Crack",
-        "locationName": "Haflong Valley Hill Cut",
-        "lat": 25.18,
-        "lng": 93.02,
-        "severity": "Critical",
-        "status": "Under Review",
-        "submittedAgo": "35 minutes ago",
-        "description": "Noticeable 4-inch deep crack formed across hill retaining wall near school footpath."
-    }
-]
+class ReportStatusUpdateRequest(BaseModel):
+    status: str
+    notes: Optional[str] = None
 
 @app.get("/", response_class=HTMLResponse)
 def read_index():
@@ -120,15 +99,29 @@ def get_locations():
 
 @app.post("/api/predict-risk")
 def predict_risk_api(req: RiskPredictRequest):
-    res = predict_landslide_risk(
+    """
+    Scenario risk evaluation using geotechnical Mohr-Coulomb and IMD precipitation analysis.
+    Transparently reports contributing factors without fake confidence metrics.
+    """
+    sim = evaluate_landslide_simulation(
         rainfall_24h=req.rainfall,
-        soil_moisture=req.soilMoisture,
-        slope_deg=req.slope,
-        elevation_m=req.elevation or 1200.0,
-        historical_risk_score=req.historicalRisk or 70.0,
-        satellite_risk_score=req.satelliteRisk or 60.0
+        soil_saturation_pct=req.soilMoisture,
+        slope_deg=req.slope
     )
-    return res
+    return {
+        "probability": sim["probability"],
+        "riskLevel": sim["riskLevel"],
+        "recommendedAction": (
+            "🚨 CRITICAL: Evacuate vulnerable slopes and inspect drainage culverts immediately." if sim["riskLevel"] == "CRITICAL" else
+            "⚠️ HIGH: Pre-position clearance equipment and issue local alerts." if sim["riskLevel"] == "HIGH" else
+            "⚠️ MODERATE: Heighten weather monitoring and inspect road shoulders." if sim["riskLevel"] == "MODERATE" else
+            "✅ LOW: Normal slope monitoring."
+        ),
+        "explanation": sim["explanation"],
+        "contributingFactors": sim["contributingFactors"],
+        "is_scenario": True,
+        "data_type": "Synthetic Scenario Simulation"
+    }
 
 @app.get("/api/risk/factors")
 def get_risk_factors_endpoint(lat: float, lon: float):
@@ -386,29 +379,36 @@ def get_weather():
 @app.get("/api/alerts")
 def get_alerts():
     """
-    Returns alert records derived from the NER reference dataset (demo simulation data).
-    These are representative locations for demonstration, NOT live sensor readings.
+    Dynamic early warning alerts engine.
+    Evaluates real USGS seismic sensor network (NER bounding box M>=3.0),
+    verified citizen/officer ground incident reports, and IMD heavy precipitation triggers.
+    Returns zero fake pre-filled alerts. If no events exceed critical criteria,
+    returns an honest 'No verified active alerts available' payload with traceable sources.
     """
-    critical_alerts = [
-        {
-            **loc,
-            "data_type": "demo_simulation",
-            "source": "RIFT NER Reference Dataset (Demo Simulation)"
-        }
-        for loc in LOCATIONS if loc["riskLevel"] in ["CRITICAL", "HIGH"]
-    ]
-    return {
-        "alerts": critical_alerts,
-        "data_type": "demo_simulation",
-        "source": "RIFT NER Reference Dataset (Demo Simulation)",
-        "note": "Alert locations are representative NER reference points for demonstration. Not live sensor data.",
-        "provenance": build_provenance(
-            source_id="demo_simulation",
-            data_type="Demo Data / Synthetic Simulation",
-            status="demo",
-            notes="Alert locations are representative NER reference points for demonstration. Not live sensor data."
+    try:
+        data = generate_live_alerts()
+        data["provenance"] = build_provenance(
+            source_id="usgs_earthquake",
+            data_type="Live Trigger Evaluation",
+            status="available" if data.get("total_active_alerts", 0) > 0 else "monitored",
+            notes="Dynamic trigger engine monitoring USGS seismic network, verified ground reports, and precipitation."
         )
-    }
+        return data
+    except Exception as e:
+        return {
+            "alerts": [],
+            "total_active_alerts": 0,
+            "status": "unavailable",
+            "message": "Alert evaluation service temporarily unreachable.",
+            "note": str(e),
+            "checked_sources": [],
+            "provenance": build_provenance(
+                source_id="usgs_earthquake",
+                data_type="Live Trigger Evaluation",
+                status="unavailable",
+                notes=f"Alert service error: {str(e)[:120]}"
+            )
+        }
 
 # ==========================================
 # GIS DISTRICT RISK MAP APIS
@@ -479,35 +479,252 @@ def get_translations():
     return MULTILINGUAL_TRANSLATIONS
 
 @app.get("/api/reports")
-def get_field_reports():
+def get_field_reports(status: Optional[str] = None):
+    """
+    Returns persistent field incident reports, optionally filtered by status.
+    All reports are stored in backend/data/field_reports.json with verification provenance.
+    """
+    reports = get_all_reports(status_filter=status)
     return {
-        "reports": FIELD_REPORTS_DB,
+        "reports": reports,
+        "total_reports": len(reports),
         "provenance": build_provenance(
             source_id="citizen_reports",
             data_type="User-Reported (Officer / Citizen Submissions)",
-            status="active"
+            status="active",
+            notes="Persistent incident reports stored in JSON registry with verification status workflow."
         )
     }
 
 @app.post("/api/reports")
 def submit_field_report(report: FieldReportRequest):
-    new_id = f"report-{len(FIELD_REPORTS_DB) + 101}"
-    item = {
-        "id": new_id,
-        "reporterName": report.reporterName,
-        "reporterRole": report.reporterRole,
-        "incidentType": report.incidentType,
-        "locationName": report.locationName,
-        "lat": report.lat,
-        "lng": report.lng,
-        "severity": report.severity,
-        "status": "Submitted",
-        "submittedAgo": "Just now",
-        "description": report.description,
-        "data_type": "user_reported"
+    """
+    Submits a new citizen or field officer report.
+    Persists to disk with initial 'Submitted' / 'Pending Verification' state.
+    """
+    created = add_report(
+        reporter_name=report.reporterName,
+        reporter_role=report.reporterRole,
+        incident_type=report.incidentType,
+        location_name=report.locationName,
+        severity=report.severity,
+        description=report.description,
+        lat=report.lat,
+        lng=report.lng,
+        district=report.district,
+        state=report.state,
+        image_url=report.photoBase64
+    )
+    return {"status": "success", "report": created}
+
+@app.patch("/api/reports/{report_id}/status")
+def update_report_status_endpoint(report_id: str, req: ReportStatusUpdateRequest):
+    """
+    Updates the operational/verification status of a report.
+    Supported states: 'Submitted', 'Pending Verification', 'Verified', 'Rejected', 'Resolved'.
+    """
+    try:
+        updated = update_report_status(report_id, req.status, notes=req.notes)
+        if not updated:
+            raise HTTPException(status_code=404, detail=f"Report {report_id} not found.")
+        return {"status": "success", "report": updated}
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+
+# ==========================================
+# AUTHORITY COMMAND & RESPONSE PRIORITY APIS
+# ==========================================
+
+@app.get("/api/authority/summary")
+def get_authority_summary_endpoint():
+    """
+    Authority Command Center live operational summary.
+    Calculates real counts dynamically from 78 official Survey of India administrative
+    districts, live USGS earthquake triggers, and verified field reports. Zero fake counts.
+    """
+    try:
+        district_geojson = get_filtered_district_risk_geojson(state="all")
+        districts = district_geojson.get("features", [])
+        total_districts = len(districts)
+        
+        critical_districts = [d for d in districts if d.get("properties", {}).get("risk_category") in ["Critical", "CRITICAL"]]
+        high_districts = [d for d in districts if d.get("properties", {}).get("risk_category") in ["High", "HIGH"]]
+        
+        alert_data = generate_live_alerts()
+        active_alerts = alert_data.get("alerts", [])
+        advisory_alerts = alert_data.get("advisory_alerts", [])
+        
+        reports = get_all_reports()
+        verified_reports = [r for r in reports if r.get("status") == "Verified"]
+        pending_reports = [r for r in reports if r.get("status") in ["Submitted", "Pending Verification"]]
+
+        return {
+            "status": "success",
+            "data_type": "Real-Time Operational Aggregation",
+            "total_monitored_districts": total_districts,
+            "total_states": 8,
+            "states": NER_STATES,
+            "high_risk_districts_count": len(high_districts) + len(critical_districts),
+            "critical_districts_count": len(critical_districts),
+            "active_alerts_count": len(active_alerts),
+            "advisory_alerts_count": len(advisory_alerts),
+            "verified_incidents_count": len(verified_reports),
+            "pending_verification_count": len(pending_reports),
+            "active_sdrf_teams_status": "Telemetry Unavailable (No automated SDRF GPS tracking feed)",
+            "lifeline_highways": [
+                {"name": "NH-6", "corridor": "Shillong - Silchar - Aizawl", "status": "Monitored Reference Corridor", "live_sensors": "Unavailable"},
+                {"name": "NH-10", "corridor": "Siliguri - Gangtok", "status": "Monitored Reference Corridor", "live_sensors": "Unavailable"},
+                {"name": "NH-29", "corridor": "Dimapur - Kohima", "status": "Monitored Reference Corridor", "live_sensors": "Unavailable"},
+                {"name": "NH-102", "corridor": "Imphal - Moreh", "status": "Monitored Reference Corridor", "live_sensors": "Unavailable"}
+            ],
+            "provenance": build_provenance(
+                source_id="survey_of_india",
+                data_type="Operational Command Aggregation",
+                status="available",
+                notes="Aggregated dynamically from 78 official Survey of India administrative district boundaries, USGS seismic sensors, and verified field registry."
+            )
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Authority summary aggregation failed: {str(e)}")
+
+@app.get("/api/response/priority")
+def get_response_priority_endpoint():
+    """
+    Dynamically ranks response priorities based on real verified alerts,
+    active ground incidents, and evaluated district terrain susceptibility.
+    No random rankings.
+    """
+    try:
+        priority_list = []
+        rank = 1
+
+        # 1. Active Alerts (Seismic or Severe Incidents)
+        alert_data = generate_live_alerts()
+        for a in alert_data.get("alerts", []):
+            priority_list.append({
+                "rank": rank,
+                "id": a["id"],
+                "name": a["name"],
+                "state": a["state"],
+                "category": a.get("category", "Emergency Trigger"),
+                "priority_score": a.get("probability", 90),
+                "risk_level": a.get("riskLevel", "CRITICAL"),
+                "reason": a.get("reason", "Active seismic or hazard trigger recorded."),
+                "recommended_action": a.get("recommendedAction", "Immediate precautionary inspection and readiness."),
+                "source": a.get("source", "USGS NEIC"),
+                "data_type": a.get("data_type", "Real Observation"),
+                "timestamp": a.get("timestamp", "Live")
+            })
+            rank += 1
+
+        # 2. Verified Field Incident Reports
+        reports = get_all_reports()
+        for r in reports:
+            if r.get("status") == "Verified":
+                priority_list.append({
+                    "rank": rank,
+                    "id": r["id"],
+                    "name": r["locationName"],
+                    "state": r.get("state", "NER"),
+                    "category": f"Verified Ground Incident: {r.get('incidentType', 'Hazard')}",
+                    "priority_score": 85 if r.get("severity") == "Critical" else 75,
+                    "risk_level": r.get("severity", "High").upper(),
+                    "reason": r.get("description", "Ground officer confirmed slope failure / obstruction."),
+                    "recommended_action": "Deploy clearance machinery and establish regional detour.",
+                    "source": f"Verified {r.get('reporterType', 'Officer')} Report",
+                    "data_type": "Verified Ground Truth Observation",
+                    "timestamp": r.get("submittedAt", "")
+                })
+                rank += 1
+
+        # 3. High Susceptibility Districts from 78 Survey of India polygons
+        district_geojson = get_filtered_district_risk_geojson(state="all")
+        districts = district_geojson.get("features", [])
+        
+        # Sort districts by risk score
+        sorted_districts = sorted(
+            districts,
+            key=lambda d: (
+                0 if d.get("properties", {}).get("risk_category") == "CRITICAL" else
+                1 if d.get("properties", {}).get("risk_category") == "HIGH" else
+                2 if d.get("properties", {}).get("risk_category") == "MODERATE" else 3
+            )
+        )
+        for d in sorted_districts[:6]:
+            props = d.get("properties", {})
+            cat = props.get("risk_category", "MODERATE")
+            if cat in ["CRITICAL", "HIGH"]:
+                priority_list.append({
+                    "rank": rank,
+                    "id": f"dist-{props.get('district')}",
+                    "name": f"{props.get('district')} District",
+                    "state": props.get("state"),
+                    "category": "High Susceptibility District",
+                    "priority_score": 78 if cat == "CRITICAL" else 68,
+                    "risk_level": cat,
+                    "reason": f"Representative slope {props.get('slope_deg')}°, elevation {props.get('elevation_m')}m, high historical GSI landslide density.",
+                    "recommended_action": "Heighten rainfall monitoring and inspect vulnerable arterial cut slopes.",
+                    "source": "RIFT V2 District Intelligence Engine",
+                    "data_type": "Model-Derived Susceptibility",
+                    "timestamp": "Evaluated dynamically"
+                })
+                rank += 1
+
+        return {
+            "status": "success",
+            "total_priority_items": len(priority_list),
+            "priority_queue": priority_list,
+            "provenance": build_provenance(
+                source_id="rift_ai_v4",
+                data_type="Prioritized Operational Queue",
+                status="available",
+                notes="Priorities ranked dynamically by active emergency triggers, verified field reports, and evaluated terrain risk."
+            )
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Priority queue generation failed: {str(e)}")
+
+# ==========================================
+# EXPLAINABLE AI (XAI) & SIMULATOR APIS
+# ==========================================
+
+@app.get("/api/xai/feature-importance")
+def get_xai_feature_importance_endpoint():
+    """
+    Returns global feature importance rankings validated against the
+    GSI 9,992 National Landslide Susceptibility Mapping records.
+    """
+    features = get_global_feature_importance()
+    return {
+        "status": "success",
+        "model_version": "RIFT V4 Intelligence (XGBoost Pipeline)",
+        "training_dataset": "GSI 9,992 National Landslide Susceptibility Mapping (NLSM) Records",
+        "features": features,
+        "provenance": build_provenance(
+            source_id="rift_ai_v4",
+            data_type="Model Feature Importance",
+            status="available",
+            notes="Global feature importance weights computed from validated XGBoost model training on GSI dataset."
+        )
     }
-    FIELD_REPORTS_DB.insert(0, item)
-    return {"status": "success", "report": item}
+
+class SimulatorRequest(BaseModel):
+    rainfall: float
+    soilMoisture: float
+    slope: float
+
+@app.post("/api/simulator/evaluate")
+def evaluate_simulator_endpoint(req: SimulatorRequest):
+    """
+    Physics-based landslide simulation sandbox.
+    Applies Mohr-Coulomb geotechnical shear strength analysis and IMD precipitation thresholds.
+    Clearly labeled as a synthetic scenario simulation.
+    """
+    return evaluate_landslide_simulation(
+        rainfall_24h=req.rainfall,
+        soil_saturation_pct=req.soilMoisture,
+        slope_deg=req.slope
+    )
 
 @app.get("/api/satellite")
 def get_satellite():

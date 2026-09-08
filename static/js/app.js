@@ -124,10 +124,11 @@ async function fetchInitialData() {
 
     // Render Components
     initGisMap();
-    renderLiveAlerts(alertRes.alerts || locationsData);
+    renderLiveAlerts(alertRes);
     renderInfrastructureTable(infrastructureData);
-    renderExplainableAi(locationsData[0]);
-    renderPriorityResponseList(locationsData);
+    renderExplainableAi();
+    renderPriorityResponseList();
+    renderAuthorityDashboard();
     initWeatherChart(weatherRes);
     initHistoricalChart();
     renderFieldReports();
@@ -453,14 +454,37 @@ function renderDistrictRiskPolygons(geoJsonData, stateFilter = "ALL") {
     }
   }).addTo(fullGisMap);
 
-  // Auto-fit bounds
-  if (stateFilter !== "ALL") {
+  // Precise Survey of India bounding boxes for fallback
+  const NER_STATE_GEO_BOUNDS = {
+    "arunachal pradesh": [[26.65, 91.54], [29.47, 97.42]],
+    "assam": [[24.13, 89.69], [27.98, 96.03]],
+    "manipur": [[23.84, 92.97], [25.70, 94.76]],
+    "meghalaya": [[25.03, 89.82], [26.12, 92.81]],
+    "mizoram": [[21.94, 92.25], [24.53, 93.45]],
+    "nagaland": [[25.20, 93.33], [27.05, 95.25]],
+    "sikkim": [[27.08, 88.01], [28.14, 88.93]],
+    "tripura": [[22.94, 91.15], [24.54, 92.34]]
+  };
+
+  // Move, fly and zoom map to actual geographic area of the selected state
+  if (stateFilter && stateFilter !== "ALL") {
     const bounds = gisDistrictGeoJsonLayer.getBounds();
     if (bounds.isValid()) {
-      fullGisMap.fitBounds(bounds, { padding: [30, 30] });
+      fullGisMap.flyToBounds(bounds, { padding: [35, 35], duration: 1.0 });
+    } else {
+      const fallbackBounds = NER_STATE_GEO_BOUNDS[stateFilter.toLowerCase()];
+      if (fallbackBounds) {
+        fullGisMap.flyToBounds(fallbackBounds, { padding: [35, 35], duration: 1.0 });
+      }
     }
   } else {
-    fullGisMap.setView([26.15, 93.0], 7);
+    // Show complete Northeast region
+    const allBounds = gisDistrictGeoJsonLayer.getBounds();
+    if (allBounds.isValid()) {
+      fullGisMap.flyToBounds(allBounds, { padding: [25, 25], duration: 1.0 });
+    } else {
+      fullGisMap.flyTo([26.15, 93.0], 7, { duration: 1.0 });
+    }
   }
 }
 
@@ -760,33 +784,133 @@ function renderMapMarkers(mapInstance, locations) {
 }
 
 /* -------------------------------------------------------------
- * LIVE ALERTS FEED
+ * LIVE ALERTS FEED (USGS SEISMIC, FIELD INCIDENTS & HEAVY RAIN)
  * ------------------------------------------------------------- */
-function renderLiveAlerts(alerts) {
+function renderLiveAlerts(alertRes) {
   const container = document.getElementById("dashboardLiveAlertsFeed");
   const fullAlertsContainer = document.getElementById("fullAlertsList");
+  const badgeEl = document.getElementById("activeAlertCountBadge");
   if (!container) return;
 
   container.innerHTML = "";
   if (fullAlertsContainer) fullAlertsContainer.innerHTML = "";
 
+  const alerts = (alertRes && alertRes.alerts) ? alertRes.alerts : (Array.isArray(alertRes) ? alertRes : []);
+  const advisories = (alertRes && alertRes.advisory_alerts) ? alertRes.advisory_alerts : [];
+
+  // Update badge count
+  if (badgeEl) {
+    if (alerts.length > 0) {
+      badgeEl.className = "risk-badge CRITICAL";
+      badgeEl.textContent = `${alerts.length} ACTIVE ${alerts.length === 1 ? "ALERT" : "ALERTS"}`;
+    } else {
+      badgeEl.className = "risk-badge LOW";
+      badgeEl.textContent = "0 ACTIVE ALERTS • MONITORED";
+    }
+  }
+
+  // If NO active alerts:
+  if (alerts.length === 0) {
+    const emptyNotice = `
+      <div class="card-inner-box" style="padding: 16px; text-align: center; border-left: 4px solid var(--risk-low);">
+        <div style="font-weight: 700; font-size: 13px; color: var(--text-primary); margin-bottom: 4px;">
+          🛡️ No Verified Active Alerts
+        </div>
+        <div style="font-size: 11px; color: var(--text-secondary); line-height: 1.4;">
+          All regional seismic sensors (USGS), validated field reports, and IMD rainfall thresholds are currently below emergency criteria.
+        </div>
+        <div style="font-size: 10px; color: var(--text-muted); margin-top: 6px;">
+          Monitored: USGS NEIC (M&ge;3.0 in NER) • RIFT Field Registry • Open-Meteo
+        </div>
+      </div>
+    `;
+    container.innerHTML = emptyNotice;
+
+    if (fullAlertsContainer) {
+      let fullHtml = `
+        <div class="card-inner-box" style="padding: 18px; border-left: 4px solid var(--risk-low); margin-bottom: 12px;">
+          <div style="font-weight: 700; font-size: 14px; color: var(--text-primary);">
+            ✅ No Verified Active Alerts Available
+          </div>
+          <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">
+            The automated early warning trigger pipeline is active. No ongoing earthquake events (M&ge;3.5 within last 7 days), active verified field landslides, or severe precipitation triggers (&ge;64.5 mm/24h) currently meet emergency threshold criteria.
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 16px;">
+          <div class="card-inner-box" style="padding: 12px;">
+            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Seismic Trigger Feed</div>
+            <div style="font-size: 13px; font-weight: 700; color: var(--risk-low); margin-top: 4px;">USGS NEIC • Live</div>
+            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Real-time query for NER bounding box (20-30°N, 88-98°E).</div>
+          </div>
+          <div class="card-inner-box" style="padding: 12px;">
+            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Ground Incident Feed</div>
+            <div style="font-size: 13px; font-weight: 700; color: var(--risk-low); margin-top: 4px;">RIFT Ground Registry • Live</div>
+            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Field officer and citizen verified incident submissions.</div>
+          </div>
+          <div class="card-inner-box" style="padding: 12px;">
+            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Meteorological Trigger</div>
+            <div style="font-size: 13px; font-weight: 700; color: var(--risk-low); margin-top: 4px;">Open-Meteo & IMD Benchmark</div>
+            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Heavy rainfall threshold: &ge;64.5 mm/24h.</div>
+          </div>
+        </div>
+      `;
+
+      // If we have advisory alerts (e.g. recent M 4.2 Sarupathar event)
+      if (advisories && advisories.length > 0) {
+        fullHtml += `
+          <div style="font-weight: 700; font-size: 13px; color: var(--text-primary); margin: 10px 0 8px;">
+            📡 Recent Regional Seismic Advisories (Reviewed USGS Instrument Detections):
+          </div>
+        `;
+        advisories.forEach(adv => {
+          fullHtml += `
+            <div class="card-inner-box" style="padding: 12px; border-left: 4px solid #38bdf8; margin-bottom: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 6px;">
+                <div style="font-weight: 700; font-size: 13px; color: var(--text-primary);">${adv.title}</div>
+                <span class="risk-badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3);">${adv.status}</span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">
+                📍 ${adv.name} • Depth: ${adv.depth_km !== null ? adv.depth_km + " km" : "Unavailable"} • ${adv.timestamp} (${adv.age_days} days ago)
+              </div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
+                ${adv.reason}
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 10px; color: var(--text-secondary);">
+                <span>Source: <a href="${adv.source_url}" target="_blank" style="color: #38bdf8; text-decoration: underline;">${adv.source}</a></span>
+                ${adv.lat && adv.lng ? `<button class="btn-secondary" style="font-size: 10px; padding: 3px 8px;" onclick="focusLocationOnMap(${adv.lat}, ${adv.lng})">VIEW ON MAP</button>` : ''}
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      fullAlertsContainer.innerHTML = fullHtml;
+    }
+    return;
+  }
+
+  // If there ARE active alerts:
   alerts.forEach(loc => {
-    let badgeClass = loc.riskLevel;
+    let badgeClass = loc.riskLevel || "HIGH";
     const cardHtml = `
-      <div class="card-inner-box" style="padding: 12px; border-left: 4px solid var(--risk-${loc.riskLevel.toLowerCase()});">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-          <div style="font-weight: 700; font-size: 13px; color: var(--text-primary);">${loc.name}</div>
+      <div class="card-inner-box" style="padding: 12px; border-left: 4px solid var(--risk-${badgeClass.toLowerCase()});">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 6px;">
+          <div style="font-weight: 700; font-size: 13px; color: var(--text-primary);">${loc.title || loc.name}</div>
           <span class="risk-badge ${badgeClass}">${loc.riskLevel} (${loc.probability}%)</span>
         </div>
         <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">
-          ${loc.state} • Rainfall: ${loc.rainfall24h}mm • Moisture: ${loc.soilMoisture}%
+          📍 ${loc.name} • ${loc.state} • ${loc.timestamp || 'Live'}
         </div>
-        <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px; font-style: italic;">
-          "${loc.recommendedAction}"
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
+          ${loc.reason || loc.recommendedAction}
         </div>
-        <div style="display: flex; gap: 8px; margin-top: 10px;">
-          <button class="btn-primary" style="font-size: 10px; padding: 4px 8px;" onclick="focusLocationOnMap(${loc.lat}, ${loc.lng})">VIEW ON MAP</button>
-          <button class="btn-secondary" style="font-size: 10px; padding: 4px 8px;" onclick="broadcastAlert('${loc.name}')">NOTIFY COMMUNITY</button>
+        <div style="display: flex; gap: 8px; margin-top: 10px; align-items: center; justify-content: space-between;">
+          <span style="font-size: 10px; color: var(--text-secondary);">Source: <b>${loc.source}</b></span>
+          <div style="display: flex; gap: 6px;">
+            ${loc.lat && loc.lng ? `<button class="btn-primary" style="font-size: 10px; padding: 4px 8px;" onclick="focusLocationOnMap(${loc.lat}, ${loc.lng})">VIEW ON MAP</button>` : ''}
+            <button class="btn-secondary" style="font-size: 10px; padding: 4px 8px;" onclick="broadcastAlert('${(loc.name || '').replace(/'/g, "\\'")}')">BROADCAST</button>
+          </div>
         </div>
       </div>
     `;
@@ -828,61 +952,82 @@ function renderInfrastructureTable(infra) {
 /* -------------------------------------------------------------
  * EXPLAINABLE AI (XAI)
  * ------------------------------------------------------------- */
-function renderExplainableAi(loc) {
+function renderExplainableAi() {
   const container = document.getElementById("fullXaiContainer");
   const predContainer = document.getElementById("predXaiBarsContainer");
-  if (!loc) return;
 
-  // Predict XAI
-  fetch("/api/predict-risk", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      rainfall: loc.rainfall24h,
-      soilMoisture: loc.soilMoisture,
-      slope: loc.slope,
-      elevation: loc.elevation
+  fetch("/api/xai/feature-importance")
+    .then(r => r.json())
+    .then(res => {
+      const features = res.features || [];
+      if (!features.length) return;
+
+      const html = features.slice(0, 9).map(f => {
+        const pct = f.importance_pct;
+        const cleanName = f.feature.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase());
+        return `
+          <div class="xai-bar-wrap" style="margin-bottom: 12px;">
+            <div class="xai-label-row" style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
+              <span><b>${cleanName}</b> <span style="font-size: 10px; color: var(--text-muted);">(${f.category})</span></span>
+              <span style="font-weight: 700; color: var(--text-accent);">${pct}%</span>
+            </div>
+            <div class="xai-bar-bg" style="background: var(--border-color); height: 8px; border-radius: 4px; overflow: hidden;">
+              <div class="xai-bar-fill" style="width: ${Math.min(100, pct * 1.8)}%; background: var(--text-accent); height: 100%; border-radius: 4px;"></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      if (container) container.innerHTML = html;
+      if (predContainer) predContainer.innerHTML = html;
     })
-  }).then(r => r.json()).then(res => {
-    const factors = res.contributingFactors;
-    const html = Object.keys(factors).map(key => `
-      <div class="xai-bar-wrap">
-        <div class="xai-label-row">
-          <span>${key} Contribution</span>
-          <span style="font-weight: 700;">${factors[key]}%</span>
-        </div>
-        <div class="xai-bar-bg">
-          <div class="xai-bar-fill" style="width: ${factors[key]}%;"></div>
-        </div>
-      </div>
-    `).join("");
-
-    if (container) container.innerHTML = html;
-    if (predContainer) predContainer.innerHTML = html;
-  });
+    .catch(err => console.error("XAI feature fetch failed:", err));
 }
 
 /* -------------------------------------------------------------
  * RESPONSE PRIORITY LIST
  * ------------------------------------------------------------- */
-function renderPriorityResponseList(locations) {
+function renderPriorityResponseList() {
   const container = document.getElementById("fullPriorityList");
   if (!container) return;
 
-  // Sort locations by highest risk probability
-  const sorted = [...locations].sort((a, b) => b.probability - a.probability);
+  fetch("/api/response/priority")
+    .then(r => r.json())
+    .then(res => {
+      const queue = res.priority_queue || [];
+      if (queue.length === 0) {
+        container.innerHTML = `
+          <div class="card-inner-box" style="padding: 16px; text-align: center;">
+            <div style="font-weight: 700;">No Priority Action Items Pending</div>
+            <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">All regional sectors operating within normal baseline tolerance.</div>
+          </div>
+        `;
+        return;
+      }
 
-  container.innerHTML = sorted.map((item, index) => `
-    <div class="priority-item" style="border-left-color: var(--risk-${item.riskLevel.toLowerCase()});">
-      <div>
-        <div style="font-weight: 700; font-size: 13px;">#${index + 1} ${item.name}</div>
-        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">
-          Population: ${item.populationAffected.toLocaleString()} • Highways: ${item.nearbyRoads.join(", ")}
+      container.innerHTML = queue.map(item => `
+        <div class="priority-item" style="border-left-color: var(--risk-${(item.risk_level || 'HIGH').toLowerCase()}); padding: 12px; margin-bottom: 10px; background: var(--bg-card-inner); border-radius: 6px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <div style="font-weight: 700; font-size: 13px; color: var(--text-primary);">
+                #${item.rank} ${item.name} <span style="font-size: 11px; color: var(--text-secondary);">(${item.state})</span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                Category: <b>${item.category}</b> • ${item.reason}
+              </div>
+              <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; font-style: italic;">
+                Recommended Action: "${item.recommended_action}"
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <span class="risk-badge ${item.risk_level || 'HIGH'}">${item.risk_level} (${item.priority_score} pts)</span>
+              <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">Source: ${item.source}</div>
+            </div>
+          </div>
         </div>
-      </div>
-      <span class="risk-badge ${item.riskLevel}">${item.riskLevel} (${item.probability}%)</span>
-    </div>
-  `).join("");
+      `).join("");
+    })
+    .catch(err => console.error("Priority response fetch failed:", err));
 }
 
 /* -------------------------------------------------------------
@@ -961,6 +1106,26 @@ function initHistoricalChart() {
 }
 
 /* -------------------------------------------------------------
+ * AUTHORITY COMMAND CENTER DASHBOARD
+ * ------------------------------------------------------------- */
+function renderAuthorityDashboard() {
+  fetch("/api/authority/summary")
+    .then(r => r.json())
+    .then(res => {
+      const zEl = document.getElementById("authMonitoredZones");
+      const cEl = document.getElementById("authCriticalZones");
+      const iEl = document.getElementById("authActiveIncidents");
+      const hEl = document.getElementById("authLifelineHighways");
+
+      if (zEl) zEl.textContent = `${res.total_monitored_districts} Districts`;
+      if (cEl) cEl.textContent = `${res.high_risk_districts_count} Districts`;
+      if (iEl) iEl.textContent = `${res.verified_incidents_count} Incidents`;
+      if (hEl && res.lifeline_highways) hEl.textContent = `${res.lifeline_highways.length} Highways`;
+    })
+    .catch(err => console.error("Authority summary fetch failed:", err));
+}
+
+/* -------------------------------------------------------------
  * FIELD REPORTING & PWA SERVICE WORKER
  * ------------------------------------------------------------- */
 function initFieldReportForm() {
@@ -970,6 +1135,9 @@ function initFieldReportForm() {
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     const name = document.getElementById("reportName").value;
+    const role = document.getElementById("reportRole") ? document.getElementById("reportRole").value : "Citizen";
+    const state = document.getElementById("reportState") ? document.getElementById("reportState").value : "Mizoram";
+    const district = document.getElementById("reportDistrict") ? document.getElementById("reportDistrict").value : "";
     const type = document.getElementById("reportType").value;
     const loc = document.getElementById("reportLocation").value;
     const severity = document.getElementById("reportSeverity").value;
@@ -977,11 +1145,13 @@ function initFieldReportForm() {
 
     const payload = {
       reporterName: name,
-      reporterRole: currentRole,
+      reporterRole: role,
       incidentType: type,
       locationName: loc,
-      lat: 23.73,
-      lng: 92.72,
+      district: district,
+      state: state,
+      lat: currentUserLocation ? currentUserLocation.latitude : null,
+      lng: currentUserLocation ? currentUserLocation.longitude : null,
       severity: severity,
       description: desc
     };
@@ -991,35 +1161,87 @@ function initFieldReportForm() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     }).then(r => r.json()).then(res => {
-      alert("✅ Incident Report Submitted & Synced Successfully!");
+      alert("✅ Incident Report Submitted Successfully! Added to verification queue.");
+      form.reset();
       renderFieldReports();
+      renderAuthorityDashboard();
     }).catch(err => {
-      // Save locally if offline
       saveReportLocally(payload);
-      alert("📡 Offline Mode: Incident report saved locally in IndexedDB cache. It will auto-sync when connection is restored.");
+      alert("📡 Offline Mode: Incident report saved locally in cache. It will auto-sync when connection is restored.");
     });
   });
 }
 
-function renderFieldReports() {
-  fetch("/api/reports").then(r => r.json()).then(res => {
+function filterFieldReports(status) {
+  renderFieldReports(status);
+}
+
+function renderFieldReports(statusFilter = "all") {
+  const url = statusFilter && statusFilter !== "all" 
+    ? `/api/reports?status=${encodeURIComponent(statusFilter)}` 
+    : "/api/reports";
+
+  fetch(url).then(r => r.json()).then(res => {
     const container = document.getElementById("fieldReportsList");
     if (!container) return;
 
-    container.innerHTML = res.reports.map(rep => `
-      <div class="card-inner-box" style="padding: 10px;">
-        <div style="display: flex; justify-content: space-between;">
-          <div style="font-weight: 700; font-size: 12px;">${rep.incidentType}</div>
-          <span class="risk-badge ${rep.severity.toUpperCase()}">${rep.severity}</span>
+    const reports = res.reports || [];
+    if (reports.length === 0) {
+      container.innerHTML = `
+        <div style="padding: 16px; text-align: center; color: var(--text-secondary); font-size: 12px;">
+          No incident reports recorded for filter: <b>${statusFilter}</b>. Use the form to submit field observations.
         </div>
-        <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">
-          ${rep.locationName} • By ${rep.reporterName} (${rep.submittedAgo})
+      `;
+      return;
+    }
+
+    container.innerHTML = reports.map(rep => {
+      const isVerified = rep.status === "Verified";
+      const statusBadgeClass = isVerified ? "LOW" : (rep.status === "Rejected" ? "CRITICAL" : "MODERATE");
+      return `
+        <div class="card-inner-box" style="padding: 12px; border-left: 4px solid var(--risk-${(rep.severity || 'HIGH').toLowerCase()}); margin-bottom: 8px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 6px;">
+            <div style="font-weight: 700; font-size: 12px; color: var(--text-primary);">${rep.incidentType}</div>
+            <div style="display: flex; gap: 6px;">
+              <span class="risk-badge ${(rep.severity || 'HIGH').toUpperCase()}">${rep.severity}</span>
+              <span class="risk-badge ${statusBadgeClass}">${rep.status}</span>
+            </div>
+          </div>
+          <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">
+            📍 ${rep.locationName} (${rep.district || ''}, ${rep.state || 'NER'})
+          </div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+            By ${rep.reporterName} (${rep.reporterRole || 'Reporter'}) • ${rep.submittedAgo || 'Recorded'}
+          </div>
+          <div style="font-size: 11px; color: var(--text-secondary); margin-top: 6px; line-height: 1.4;">
+            "${rep.description}"
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 10px; color: var(--text-muted);">
+            <span>Provenance: ${rep.provenance ? rep.provenance.source_name : 'Ground Report'}</span>
+            ${!isVerified ? `
+              <button class="btn-secondary" style="font-size: 10px; padding: 2px 6px;" onclick="verifyReportAction('${rep.id}')">
+                Verify (Officer)
+              </button>
+            ` : '<span style="color: var(--risk-low); font-weight: 700;">✓ Verified</span>'}
+          </div>
         </div>
-        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
-          ${rep.description}
-        </div>
-      </div>
-    `).join("");
+      `;
+    }).join("");
+  });
+}
+
+function verifyReportAction(reportId) {
+  fetch(`/api/reports/${reportId}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status: "Verified", notes: "Field inspection confirmed ground hazard." })
+  }).then(r => r.json()).then(res => {
+    alert("✅ Report marked as Verified Ground Observation.");
+    renderFieldReports();
+    renderAuthorityDashboard();
+    fetch("/api/alerts").then(r => r.json()).then(renderLiveAlerts);
+  }).catch(err => {
+    alert("Verification failed: " + err);
   });
 }
 
@@ -1091,15 +1313,16 @@ function initSimulator() {
     document.getElementById("simSoilLabel").innerText = `Soil Saturation: ${soil}%`;
     document.getElementById("simSlopeLabel").innerText = `Slope: ${slope}°`;
 
-    fetch("/api/predict-risk", {
+    fetch("/api/simulator/evaluate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ rainfall, soilMoisture: soil, slope })
     }).then(r => r.json()).then(res => {
-      document.getElementById("simProbResult").innerText = `${res.probability}%`;
+      const probEl = document.getElementById("simProbResult");
       const badgeWrap = document.getElementById("simBadgeWrap");
-      badgeWrap.innerHTML = `<span class="risk-badge ${res.riskLevel}">${res.riskLevel} RISK</span>`;
-    });
+      if (probEl) probEl.innerText = `${res.probability}%`;
+      if (badgeWrap) badgeWrap.innerHTML = `<span class="risk-badge ${res.riskLevel}">${res.riskLevel} RISK (SCENARIO)</span>`;
+    }).catch(err => console.error("Simulator evaluate error:", err));
   }
 
   rSlider.addEventListener("input", updateSim);
@@ -1150,9 +1373,9 @@ function runDemoScenarioStep() {
       locationsData[0].probability = stepData.prediction.probability;
       locationsData[0].riskLevel = stepData.prediction.riskLevel;
 
-      renderLiveAlerts(locationsData);
-      renderPriorityResponseList(locationsData);
-      renderExplainableAi(locationsData[0]);
+      fetch("/api/alerts").then(r => r.json()).then(renderLiveAlerts);
+      renderPriorityResponseList();
+      renderExplainableAi();
     }
   });
 }
@@ -1234,7 +1457,6 @@ function validateCoordinates(latRaw, lonRaw) {
 function handleAiLocationRefresh() {
   const latInput = document.getElementById("aiLocLatitude");
   const lonInput = document.getElementById("aiLocLongitude");
-  const accEl = document.getElementById("aiLocAccuracy");
   const msgBox = document.getElementById("aiLocMessageBox");
   const statusState = document.getElementById("aiLocStatusState");
   const statusDot = document.getElementById("aiLocStatusDot");
@@ -1347,10 +1569,6 @@ function initCurrentLocationFeature() {
         const msgBox = document.getElementById("aiLocMessageBox");
         if (msgBox && msgBox.style.display !== "none") {
           msgBox.style.display = "none";
-        }
-        const accEl = document.getElementById("aiLocAccuracy");
-        if (accEl && accEl.textContent.startsWith("±")) {
-          accEl.textContent = "Manual Input";
         }
       });
     }
@@ -1495,7 +1713,6 @@ function updateAiPageLocation(state, lat, lng, acc, message) {
   const btnText = document.getElementById("aiLocBtnText");
   const latEl = document.getElementById("aiLocLatitude");
   const lngEl = document.getElementById("aiLocLongitude");
-  const accEl = document.getElementById("aiLocAccuracy");
   const statusState = document.getElementById("aiLocStatusState");
   const statusDot = document.getElementById("aiLocStatusDot");
   const statusPill = document.getElementById("aiLocStatusPill");
@@ -1533,9 +1750,6 @@ function updateAiPageLocation(state, lat, lng, acc, message) {
     if (lngEl && lng !== null && lng !== undefined) {
       if ("value" in lngEl) lngEl.value = lng.toFixed(6);
       else lngEl.textContent = lng.toFixed(6);
-    }
-    if (accEl && acc !== null && acc !== undefined) {
-      accEl.textContent = typeof acc === "number" ? `±${Math.round(acc)} m` : acc;
     }
     if (msgBox) {
       msgBox.textContent = "";

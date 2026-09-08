@@ -39,7 +39,31 @@ class AlertCenterView extends StatelessWidget {
           ),
           const SizedBox(height: 12),
 
-          ListView.builder(
+          if (provider.locations.isEmpty)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Row(
+                      children: [
+                        Icon(Icons.check_circle_outline, color: AppTheme.riskLow, size: 20),
+                        SizedBox(width: 8),
+                        Text('No Verified Active Alerts Available', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      ],
+                    ),
+                    SizedBox(height: 8),
+                    Text(
+                      'All monitored regional triggers (USGS seismic sensors, verified ground reports, and heavy rainfall thresholds) are currently below critical alert criteria.',
+                      style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: provider.locations.length,

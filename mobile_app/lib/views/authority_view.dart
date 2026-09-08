@@ -25,10 +25,10 @@ class AuthorityView extends StatelessWidget {
             physics: const NeverScrollableScrollPhysics(),
             childAspectRatio: 1.4,
             children: [
-              _buildStatCard('Monitored Districts', '42 Districts', Icons.location_city, AppTheme.primaryAccent),
-              _buildStatCard('Critical Risk Zones', '3 Areas', Icons.report_problem, AppTheme.riskCritical),
-              _buildStatCard('SDRF Battalions', '12 Deployed', Icons.shield, AppTheme.riskLow),
-              _buildStatCard('Highways at Risk', 'NH-6, NH-10', Icons.edit_road, AppTheme.riskHigh),
+              _buildStatCard('Monitored Zones', '78 Districts', Icons.location_city, AppTheme.primaryAccent),
+              _buildStatCard('Susceptibility Criteria', 'Model Evaluated', Icons.terrain, AppTheme.riskHigh),
+              _buildStatCard('SDRF Telemetry', 'Unavailable', Icons.shield, AppTheme.textSecondary),
+              _buildStatCard('Lifeline Corridors', '4 Highways', Icons.edit_road, AppTheme.primaryAccent),
             ],
           ),
 
@@ -39,11 +39,12 @@ class AuthorityView extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: const [
-                  Text('Disaster Management Protocol Status', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                  Text('Disaster Command Operational Status', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                   SizedBox(height: 8),
-                  Text('• NDRF Battalion 3 on Standby at Silchar Base', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-                  Text('• Emergency Lifeline Evacuation Order active for Aizawl Ridge Sector 4', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-                  Text('• Satellite SAR Deformation Alerts monitored every 6 hours', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  Text('• 78 official administrative district boundaries loaded across 8 Northeast states', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  Text('• USGS NEIC global seismic network monitored for NER triggers (M >= 3.0)', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  Text('• SDRF responder GPS telemetry is currently unconfigured / unavailable', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+                  Text('• Corridors monitored: NH-6, NH-10, NH-29, NH-102 (OSM Reference)', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
                 ],
               ),
             ),
