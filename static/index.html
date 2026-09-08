@@ -313,7 +313,7 @@
               <!-- State Selector -->
               <div style="display: flex; align-items: center; gap: 6px;">
                 <label for="gisStateFilter" style="font-size: 11px; font-weight: 600; color: var(--text-secondary);">State:</label>
-                <select class="select-control" id="gisStateFilter" style="min-width: 155px; height: 32px; font-size: 11px; font-weight: 600;">
+                <select class="select-control" id="gisStateFilter" style="min-width: 155px; height: 34px; font-size: 11.5px; font-weight: 600;">
                   <option value="ALL">All NER States</option>
                   <option value="Arunachal Pradesh">Arunachal Pradesh</option>
                   <option value="Assam">Assam</option>
@@ -327,20 +327,25 @@
               </div>
 
               <!-- Basemap Layer Selector: Unified Modern Segmented Control -->
-              <div class="gis-layer-btn-group" role="group" aria-label="Map Basemap Layers">
-                <button type="button" class="gis-layer-btn active" data-layer="street" id="gisBtnStreet" title="OpenStreetMap Street View">
-                  <i data-lucide="map"></i> <span>Street</span>
-                </button>
-                <button type="button" class="gis-layer-btn" data-layer="satellite" id="gisBtnSatellite" title="ESRI High-Resolution World Satellite Imagery">
-                  <i data-lucide="satellite"></i> <span>Satellite</span>
-                </button>
-                <button type="button" class="gis-layer-btn" data-layer="terrain" id="gisBtnTerrain" title="ESRI Topographic Relief & Contours">
-                  <i data-lucide="mountain"></i> <span>Terrain</span>
-                </button>
+              <div class="gis-layer-control-wrap">
+                <div class="gis-segmented-control" role="group" aria-label="Map Basemap Layers">
+                  <button type="button" class="gis-segment-btn gis-layer-btn active" data-layer="street" id="gisBtnStreet" title="OpenStreetMap Street View">
+                    <i data-lucide="map" class="gis-segment-icon"></i>
+                    <span class="gis-segment-label">Street</span>
+                  </button>
+                  <button type="button" class="gis-segment-btn gis-layer-btn" data-layer="satellite" id="gisBtnSatellite" title="ESRI High-Resolution World Satellite Imagery">
+                    <i data-lucide="satellite" class="gis-segment-icon"></i>
+                    <span class="gis-segment-label">Satellite</span>
+                  </button>
+                  <button type="button" class="gis-segment-btn gis-layer-btn" data-layer="terrain" id="gisBtnTerrain" title="ESRI Topographic Relief & Contours">
+                    <i data-lucide="mountain" class="gis-segment-icon"></i>
+                    <span class="gis-segment-label">Terrain</span>
+                  </button>
+                </div>
               </div>
 
               <!-- Refresh Button -->
-              <button type="button" class="btn-secondary" id="gisBtnRefresh" title="Refresh AI Landslide Risk Data" style="display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; height: 32px; font-size: 11px; font-weight: 600;">
+              <button type="button" class="btn-secondary" id="gisBtnRefresh" title="Refresh AI Landslide Risk Data" style="display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; height: 34px; font-size: 11.5px; font-weight: 600;">
                 <i data-lucide="refresh-cw" id="gisRefreshIcon" style="width: 13px; height: 13px;"></i>
                 <span>Refresh</span>
               </button>
@@ -352,6 +357,17 @@
             <!-- Left: Interactive Map -->
             <div class="gis-map-wrapper">
               <div id="fullGisMap"></div>
+              
+              <!-- Map Loading & Error Status Overlay -->
+              <div class="gis-map-status-overlay" id="gisMapStatusOverlay" style="display: none;">
+                <div class="gis-status-content">
+                  <i data-lucide="loader-2" class="gis-status-spinner" id="gisStatusIcon" style="width: 22px; height: 22px; animation: spin 1s linear infinite;"></i>
+                  <span id="gisStatusMessage">Loading NER District Risk Intelligence...</span>
+                  <button type="button" class="btn-secondary" id="gisBtnRetryLoad" style="display: none; margin-top: 6px; font-size: 11px; padding: 4px 12px;">
+                    <i data-lucide="refresh-cw" style="width: 12px; height: 12px;"></i> Retry
+                  </button>
+                </div>
+              </div>
               
               <!-- Floating Map Legend Overlay -->
               <div class="gis-map-legend" id="gisMapLegend">

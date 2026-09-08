@@ -88,9 +88,9 @@ function initTabNavigation() {
 
       // Trigger map resize if switching to GIS map views
       if (target === "dashboard" && gisMap) {
-        setTimeout(() => gisMap.invalidateSize(), 200);
-      } else if (target === "gis-map-view" && fullGisMap) {
-        setTimeout(() => fullGisMap.invalidateSize(), 200);
+        setTimeout(() => gisMap.invalidateSize(), 150);
+      } else if (target === "gis-map-view") {
+        ensureFullGisMapReady();
       } else if (target === "ai-prediction" && currentUserLocation) {
         updateAiPageLocation("success", currentUserLocation.latitude, currentUserLocation.longitude, currentUserLocation.accuracy, null);
       } else if (target === "weather-monitoring") {
@@ -190,27 +190,76 @@ function initGisMap() {
   }
 
   // 2. Full Screen GIS Risk Map View
+  const gisPage = document.getElementById("gis-map-view");
+  if (gisPage && gisPage.classList.contains("active")) {
+    initFullGisMap();
+  } else {
+    // Pre-fetch district risk intelligence in the background so it's ready on first click
+    fetchDistrictRiskData(false);
+  }
+}
+
+function ensureFullGisMapReady() {
   const fullMapElement = document.getElementById("fullGisMap");
-  if (fullMapElement && !fullGisMap) {
-    fullGisMap = L.map("fullGisMap", {
-      center: mapCenter,
-      zoom: 7,
-      minZoom: 6,
-      maxZoom: 18,
-      maxBounds: [[20.0, 87.0], [31.0, 99.0]],
-      maxBoundsViscosity: 0.8
+  if (!fullMapElement) return;
+
+  if (!fullGisMap) {
+    initFullGisMap();
+  } else {
+    fullGisMap.invalidateSize({ pan: false });
+    const currentState = document.getElementById("gisStateFilter")?.value || "ALL";
+    if (currentDistrictRiskData) {
+      renderDistrictRiskPolygons(currentDistrictRiskData, currentState);
+    } else {
+      fetchDistrictRiskData(false);
+    }
+  }
+
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+}
+
+function initFullGisMap() {
+  const fullMapElement = document.getElementById("fullGisMap");
+  if (!fullMapElement || fullGisMap) return;
+
+  fullGisMap = L.map("fullGisMap", {
+    center: [26.15, 93.0],
+    zoom: 7,
+    minZoom: 6,
+    maxZoom: 18,
+    maxBounds: [[20.0, 87.0], [31.0, 99.0]],
+    maxBoundsViscosity: 0.8
+  });
+  window.fullGisMap = fullGisMap;
+
+  // Default to OpenStreetMap Standard basemap
+  currentBasemapTileLayer = L.tileLayer(
+    GIS_BASEMAP_PROVIDERS.street.url, 
+    GIS_BASEMAP_PROVIDERS.street.options
+  ).addTo(fullGisMap);
+
+  // Setup Basemap switchers, state filter, and refresh controls
+  initFullGisMapControls();
+
+  // Attach ResizeObserver to guarantee size invalidation on resize
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.width > 50 && entry.contentRect.height > 50 && fullGisMap) {
+          fullGisMap.invalidateSize({ pan: false });
+        }
+      }
     });
+    ro.observe(fullMapElement);
+  }
 
-    // Default to OpenStreetMap Standard basemap
-    currentBasemapTileLayer = L.tileLayer(
-      GIS_BASEMAP_PROVIDERS.street.url, 
-      GIS_BASEMAP_PROVIDERS.street.options
-    ).addTo(fullGisMap);
-
-    // Setup Basemap switchers, state filter, and refresh controls
-    initFullGisMapControls();
-
-    // Fetch and render initial 78 district risk polygons
+  // If district data was already pre-fetched, render it immediately; otherwise fetch it
+  if (currentDistrictRiskData) {
+    const currentState = document.getElementById("gisStateFilter")?.value || "ALL";
+    renderDistrictRiskPolygons(currentDistrictRiskData, currentState);
+  } else {
     fetchDistrictRiskData(false);
   }
 }
@@ -314,7 +363,7 @@ function switchBasemapLayer(layerKey) {
   activeBasemapKey = layerKey;
 
   // Update button active state
-  document.querySelectorAll(".gis-layer-btn").forEach(btn => {
+  document.querySelectorAll(".gis-layer-btn, .gis-segment-btn").forEach(btn => {
     btn.classList.toggle("active", btn.dataset.layer === layerKey);
   });
 
@@ -336,6 +385,16 @@ async function fetchDistrictRiskData(forceRefresh = false) {
   const refreshIcon = document.getElementById("gisRefreshIcon");
   if (refreshIcon) refreshIcon.classList.add("spin");
 
+  const statusOverlay = document.getElementById("gisMapStatusOverlay");
+  const statusMsg = document.getElementById("gisStatusMessage");
+  const btnRetry = document.getElementById("gisBtnRetryLoad");
+  
+  if (!currentDistrictRiskData && statusOverlay) {
+    statusOverlay.style.display = "flex";
+    if (statusMsg) statusMsg.textContent = "Loading NER District Risk Intelligence...";
+    if (btnRetry) btnRetry.style.display = "none";
+  }
+
   try {
     const url = `/api/gis/risk-districts?state=all${forceRefresh ? '&refresh=true' : ''}`;
     const response = await fetch(url);
@@ -344,6 +403,10 @@ async function fetchDistrictRiskData(forceRefresh = false) {
     }
     const data = await response.json();
     currentDistrictRiskData = data;
+
+    if (statusOverlay) {
+      statusOverlay.style.display = "none";
+    }
 
     // Update metadata headers
     const countText = document.getElementById("gisDistrictsCountText");
@@ -371,13 +434,23 @@ async function fetchDistrictRiskData(forceRefresh = false) {
       }
     }
 
-    // Render features with current state filter
-    const currentState = document.getElementById("gisStateFilter")?.value || "ALL";
-    renderDistrictRiskPolygons(data, currentState);
+    // Render features with current state filter ONLY IF fullGisMap is ready
+    if (fullGisMap) {
+      const currentState = document.getElementById("gisStateFilter")?.value || "ALL";
+      renderDistrictRiskPolygons(data, currentState);
+    }
 
     console.log(`[RIFT GIS] Loaded ${data.features ? data.features.length : 0} district risk boundaries successfully.`);
   } catch (err) {
     console.error("[RIFT GIS] Error fetching district risk data:", err);
+    if (statusOverlay) {
+      statusOverlay.style.display = "flex";
+      if (statusMsg) statusMsg.textContent = "Live GIS Risk Data Currently Unavailable";
+      if (btnRetry) {
+        btnRetry.style.display = "inline-flex";
+        btnRetry.onclick = () => fetchDistrictRiskData(true);
+      }
+    }
   } finally {
     if (refreshIcon) {
       setTimeout(() => refreshIcon.classList.remove("spin"), 500);
@@ -387,6 +460,15 @@ async function fetchDistrictRiskData(forceRefresh = false) {
 
 function renderDistrictRiskPolygons(geoJsonData, stateFilter = "ALL") {
   if (!fullGisMap || !geoJsonData) return;
+
+  const mapEl = document.getElementById("fullGisMap");
+  if (!mapEl || mapEl.offsetWidth === 0 || mapEl.offsetHeight === 0) {
+    // Map container is not yet visible in DOM. Defer rendering to prevent NaN bounding boxes and distorted SVG overlays.
+    return;
+  }
+
+  // Ensure Leaflet dimensions are accurate for current viewport
+  fullGisMap.invalidateSize({ pan: false });
 
   // Remove existing GeoJSON layer
   if (gisDistrictGeoJsonLayer) {
@@ -454,6 +536,9 @@ function renderDistrictRiskPolygons(geoJsonData, stateFilter = "ALL") {
     }
   }).addTo(fullGisMap);
 
+  // Keep district polygons on top of tile layer
+  gisDistrictGeoJsonLayer.bringToFront();
+
   // Precise Survey of India bounding boxes for fallback
   const NER_STATE_GEO_BOUNDS = {
     "arunachal pradesh": [[26.65, 91.54], [29.47, 97.42]],
@@ -463,27 +548,28 @@ function renderDistrictRiskPolygons(geoJsonData, stateFilter = "ALL") {
     "mizoram": [[21.94, 92.25], [24.53, 93.45]],
     "nagaland": [[25.20, 93.33], [27.05, 95.25]],
     "sikkim": [[27.08, 88.01], [28.14, 88.93]],
-    "tripura": [[22.94, 91.15], [24.54, 92.34]]
+    "tripura": [[22.94, 91.15], [24.54, 92.34]],
+    "all": [[21.94, 88.01], [29.47, 97.42]]
   };
 
   // Move, fly and zoom map to actual geographic area of the selected state
   if (stateFilter && stateFilter !== "ALL") {
     const bounds = gisDistrictGeoJsonLayer.getBounds();
     if (bounds.isValid()) {
-      fullGisMap.flyToBounds(bounds, { padding: [35, 35], duration: 1.0 });
+      fullGisMap.flyToBounds(bounds, { padding: [35, 35], duration: 0.8 });
     } else {
       const fallbackBounds = NER_STATE_GEO_BOUNDS[stateFilter.toLowerCase()];
       if (fallbackBounds) {
-        fullGisMap.flyToBounds(fallbackBounds, { padding: [35, 35], duration: 1.0 });
+        fullGisMap.flyToBounds(fallbackBounds, { padding: [35, 35], duration: 0.8 });
       }
     }
   } else {
     // Show complete Northeast region
     const allBounds = gisDistrictGeoJsonLayer.getBounds();
     if (allBounds.isValid()) {
-      fullGisMap.flyToBounds(allBounds, { padding: [25, 25], duration: 1.0 });
+      fullGisMap.flyToBounds(allBounds, { padding: [25, 25], duration: 0.8 });
     } else {
-      fullGisMap.flyTo([26.15, 93.0], 7, { duration: 1.0 });
+      fullGisMap.flyToBounds(NER_STATE_GEO_BOUNDS.all, { padding: [25, 25], duration: 0.8 });
     }
   }
 }

@@ -3270,107 +3270,225 @@ body.light-theme .col-temp-max {
 }
 
 /* ==========================================================================
-   GIS Map Controls — Unified Modern Segmented Basemap Selector & Toolbar
+   GIS Map Controls — Professional Unified Segmented Layer Selector & Toolbar
    ========================================================================== */
 .gis-toolbar {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
 }
 
-.gis-layer-btn-group {
+.gis-layer-control-wrap {
   display: inline-flex;
   align-items: center;
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  padding: 2px;
-  gap: 2px;
-  height: 32px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
 }
 
+/* Outer unified segmented container */
+.gis-segmented-control,
+.gis-layer-btn-group {
+  display: inline-flex;
+  align-items: stretch;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 3px;
+  height: 34px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25), inset 0 1px 2px rgba(0, 0, 0, 0.2);
+  user-select: none;
+}
+
+/* Individual segment buttons */
+.gis-segment-btn,
 .gis-layer-btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  height: 26px;
-  padding: 0 12px;
+  gap: 7px;
+  height: 100%;
+  min-height: 26px;
+  padding: 0 13px;
+  margin: 0;
   background: transparent;
-  border: none;
-  border-radius: 4px;
-  color: var(--text-secondary);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text-muted);
   font-family: var(--font-sans);
   font-size: 11px;
   font-weight: 600;
+  letter-spacing: 0.2px;
   line-height: 1;
   cursor: pointer;
   outline: none;
-  transition: all 0.18s ease-in-out;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   white-space: nowrap;
-  user-select: none;
   -webkit-appearance: none;
+  -moz-appearance: none;
   appearance: none;
 }
 
+/* Icons inside segments */
+.gis-segment-icon,
 .gis-layer-btn svg,
 .gis-layer-btn i {
-  width: 13px;
-  height: 13px;
+  width: 14px;
+  height: 14px;
   stroke-width: 2.2;
   flex-shrink: 0;
-  pointer-events: none;
+  stroke: currentColor;
   display: inline-block;
   vertical-align: middle;
+  transition: stroke 0.2s ease, transform 0.2s ease;
 }
 
+/* Inactive button hover */
+.gis-segment-btn:hover:not(.active),
 .gis-layer-btn:hover:not(.active) {
   background: rgba(255, 255, 255, 0.07);
   color: var(--text-primary);
 }
 
+.gis-segment-btn:hover:not(.active) .gis-segment-icon,
+.gis-layer-btn:hover:not(.active) svg {
+  transform: scale(1.08);
+}
+
+/* Focus outline */
+.gis-segment-btn:focus-visible,
 .gis-layer-btn:focus-visible {
   box-shadow: 0 0 0 2px var(--primary-accent);
 }
 
+/* Active selected state — Luminous NER-SAFE Accent */
+.gis-segment-btn.active,
 .gis-layer-btn.active {
-  background: var(--primary-accent);
-  color: #0b0f19;
+  background: rgba(56, 189, 248, 0.18);
+  border-color: rgba(56, 189, 248, 0.45);
+  color: #38bdf8;
   font-weight: 700;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), inset 0 0 10px rgba(56, 189, 248, 0.12);
 }
 
+.gis-segment-btn.active .gis-segment-icon,
 .gis-layer-btn.active svg,
 .gis-layer-btn.active i {
-  stroke: #0b0f19;
+  stroke: #38bdf8;
+}
+
+/* State selector styling to align with segmented control */
+#gisStateFilter.select-control {
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Refresh button styling to align with segmented control */
+#gisBtnRefresh.btn-secondary {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Map Status & Error Overlay */
+.gis-map-status-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(11, 17, 32, 0.78);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gis-status-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  padding: 18px 26px;
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 /* Light Theme Adaptations for GIS Controls */
+body.light-theme .gis-segmented-control,
 body.light-theme .gis-layer-btn-group {
   background: #f1f5f9;
   border-color: #cbd5e1;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), inset 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
+body.light-theme .gis-segment-btn,
 body.light-theme .gis-layer-btn {
-  color: #475569;
+  color: #64748b;
 }
 
+body.light-theme .gis-segment-btn:hover:not(.active),
 body.light-theme .gis-layer-btn:hover:not(.active) {
   background: #e2e8f0;
   color: #0f172a;
 }
 
+body.light-theme .gis-segment-btn.active,
 body.light-theme .gis-layer-btn.active {
   background: #0284c7;
+  border-color: #0284c7;
   color: #ffffff;
-  box-shadow: 0 1px 3px rgba(2, 132, 199, 0.25);
+  font-weight: 700;
+  box-shadow: 0 1px 4px rgba(2, 132, 199, 0.35);
 }
 
+body.light-theme .gis-segment-btn.active .gis-segment-icon,
 body.light-theme .gis-layer-btn.active svg,
 body.light-theme .gis-layer-btn.active i {
   stroke: #ffffff;
+}
+
+body.light-theme #gisStateFilter.select-control {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+body.light-theme #gisBtnRefresh.btn-secondary {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+body.light-theme .gis-map-status-overlay {
+  background: rgba(248, 250, 252, 0.82);
+}
+
+body.light-theme .gis-status-content {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
