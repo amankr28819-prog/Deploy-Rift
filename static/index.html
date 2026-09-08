@@ -52,6 +52,13 @@
         <span id="labelRunDemo">RUN DEMO SCENARIO</span>
       </button>
 
+      <!-- Theme Toggle Button -->
+      <button class="btn-theme-toggle" id="btnThemeToggle" aria-label="Toggle Light or Dark Mode" title="Toggle Light / Dark Mode">
+        <i data-lucide="sun" id="iconThemeSun"></i>
+        <i data-lucide="moon" id="iconThemeMoon" style="display: none;"></i>
+        <span id="labelThemeMode">Light</span>
+      </button>
+
       <!-- Language Selector -->
       <select class="select-control" id="langSelector">
         <option value="English">🇬🇧 English</option>
@@ -151,23 +158,23 @@
             </div>
             
             <div style="display: flex; flex-direction: column; gap: 10px;">
-              <div style="background: #172036; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+              <div class="card-inner-box" style="padding: 12px;">
                 <div style="font-size: 11px; color: var(--text-secondary);">Highest Active Risk Zone</div>
-                <div style="font-size: 16px; font-weight: 700; color: #ef4444; margin-top: 2px;">Aizawl District (Mizoram)</div>
+                <div style="font-size: 16px; font-weight: 700; color: var(--risk-critical); margin-top: 2px;">Aizawl District (Mizoram)</div>
                 <div style="display: flex; gap: 8px; margin-top: 6px;">
                   <span class="risk-badge CRITICAL">CRITICAL (87%)</span>
                   <span style="font-size: 11px; color: var(--text-muted); align-self: center;">165mm / 24h</span>
                 </div>
               </div>
 
-              <div style="background: #172036; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+              <div class="card-inner-box" style="padding: 12px;">
                 <div style="font-size: 11px; color: var(--text-secondary);">Monitored NER Locations</div>
-                <div style="font-size: 22px; font-weight: 800; color: #38bdf8;">8 States • 42 Districts</div>
+                <div style="font-size: 22px; font-weight: 800; color: var(--text-accent);">8 States • 42 Districts</div>
               </div>
 
-              <div style="background: #172036; padding: 12px; border-radius: 8px; border: 1px solid var(--border-color);">
+              <div class="card-inner-box" style="padding: 12px;">
                 <div style="font-size: 11px; color: var(--text-secondary);">Critical Highways at Risk</div>
-                <div style="font-size: 15px; font-weight: 700; color: #f97316;">NH-6, NH-10, NH-27</div>
+                <div style="font-size: 15px; font-weight: 700; color: var(--risk-high);">NH-6, NH-10, NH-27</div>
                 <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Potential blockage affecting 88,000 citizens</div>
               </div>
             </div>
@@ -191,7 +198,7 @@
             
             <!-- Map Layer Toggles -->
             <div class="map-layer-controls">
-              <div style="font-weight: 700; color: #fff; margin-bottom: 4px;">GIS Layers</div>
+              <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">GIS Layers</div>
               <label class="layer-toggle-item">
                 <input type="checkbox" id="layerLandslideRisk" checked> Landslide Risk Zones
               </label>
@@ -207,6 +214,44 @@
               <label class="layer-toggle-item">
                 <input type="checkbox" id="layerFieldReports" checked> Field Reports
               </label>
+            </div>
+
+            <!-- Current Location Map Control HUD -->
+            <div class="current-location-box" id="currentLocationBox">
+              <div class="loc-header-row">
+                <div class="loc-title">
+                  <i data-lucide="map-pin" class="loc-icon"></i>
+                  <span>Current Location</span>
+                </div>
+                <span class="loc-status-pill status-idle" id="locStatusPill">
+                  <span class="loc-status-dot"></span>
+                  <span id="locStatusText">Not detected</span>
+                </span>
+              </div>
+
+              <div class="loc-coords-body" id="locCoordsBody">
+                <div class="loc-coord-row">
+                  <span class="loc-coord-label">Latitude</span>
+                  <span class="loc-coord-value" id="locLatValue">—</span>
+                </div>
+                <div class="loc-coord-row">
+                  <span class="loc-coord-label">Longitude</span>
+                  <span class="loc-coord-value" id="locLngValue">—</span>
+                </div>
+                <div class="loc-coord-row">
+                  <span class="loc-coord-label">Accuracy</span>
+                  <span class="loc-coord-value" id="locAccValue">—</span>
+                </div>
+              </div>
+
+              <div class="loc-message-box" id="locMessageBox" style="display: none;"></div>
+
+              <div class="loc-action-row">
+                <button type="button" class="btn-get-location" id="btnGetLocation">
+                  <i data-lucide="locate-fixed" id="btnLocateIcon"></i>
+                  <span id="btnLocateText">Get My Location</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -226,17 +271,17 @@
           <div class="card" style="grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
             <div>
               <div class="card-title" style="margin-bottom: 8px;"><i data-lucide="cloud-rain"></i> 24h Rainfall Anomaly</div>
-              <div style="font-size: 20px; font-weight: 800; color: #38bdf8;">165 mm <span style="font-size: 12px; color: #ef4444; font-weight: 600;">(+42% above normal)</span></div>
+              <div style="font-size: 20px; font-weight: 800; color: var(--val-highlight);">165 mm <span style="font-size: 12px; color: var(--danger-text); font-weight: 600;">(+42% above normal)</span></div>
               <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Heavy rainfall triggering slope saturation</div>
             </div>
             <div>
               <div class="card-title" style="margin-bottom: 8px;"><i data-lucide="git-commit"></i> Soil Saturation Index</div>
-              <div style="font-size: 20px; font-weight: 800; color: #ef4444;">82% <span style="font-size: 12px; color: #ef4444; font-weight: 600;">(CRITICAL THRESHOLD)</span></div>
+              <div style="font-size: 20px; font-weight: 800; color: var(--danger-text);">82% <span style="font-size: 12px; color: var(--danger-text); font-weight: 600;">(CRITICAL THRESHOLD)</span></div>
               <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Liquefaction potential high across 37° slopes</div>
             </div>
             <div>
               <div class="card-title" style="margin-bottom: 8px;"><i data-lucide="wifi-off"></i> Low-Network Field Support</div>
-              <div style="font-size: 20px; font-weight: 800; color: #22c55e;">PWA Offline Cache Active</div>
+              <div style="font-size: 20px; font-weight: 800; color: var(--success-text);">PWA Offline Cache Active</div>
               <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">0 pending reports in local queue</div>
             </div>
           </div>
@@ -267,47 +312,579 @@
         </div>
       </section>
 
-      <!-- MODULE 3: AI RISK PREDICTION -->
+      <!-- MODULE 3: CURRENT LOCATION & LOCATION-BASED LANDSLIDE FACTORS -->
       <section class="module-page" id="ai-prediction">
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title"><i data-lucide="cpu"></i> AI Landslide Risk Prediction Engine</div>
-          </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <!-- Predictor Inputs -->
-            <div style="display: flex; flex-direction: column; gap: 12px;">
-              <div class="form-group">
-                <label class="form-label">24-Hour Cumulative Rainfall (mm)</label>
-                <input type="number" class="form-input" id="inputRainfall" value="165">
+        <div style="display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 1240px; margin: 0 auto;">
+          
+          <!-- Current Location Header Card -->
+          <div class="card" style="width: 100%;">
+            <div class="card-header">
+              <div class="card-title">
+                <i data-lucide="map-pin" style="color: #38bdf8;"></i> Current Location
               </div>
-              <div class="form-group">
-                <label class="form-label">Soil Moisture Saturation (%)</label>
-                <input type="number" class="form-input" id="inputSoilMoisture" value="82">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Terrain Slope Steepness (°)</label>
-                <input type="number" class="form-input" id="inputSlope" value="37">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Elevation (meters)</label>
-                <input type="number" class="form-input" id="inputElevation" value="1132">
-              </div>
-              <button class="btn-primary" id="btnCalculatePrediction">Compute AI Risk Score</button>
+              <span class="loc-status-pill status-idle" id="aiLocStatusPill">
+                <span class="loc-status-dot"></span>
+                <span id="aiLocStatusText">Location not detected</span>
+              </span>
             </div>
 
-            <!-- Prediction Result & XAI -->
-            <div style="background: #172036; padding: 20px; border-radius: 8px; border: 1px solid var(--border-color);">
-              <div style="font-size: 12px; color: var(--text-secondary);">Calculated Risk Score</div>
-              <div style="font-size: 36px; font-weight: 800; color: #ef4444;" id="predProbabilityText">87.0%</div>
-              <div style="margin-top: 4px;" id="predRiskBadgeWrap"><span class="risk-badge CRITICAL">CRITICAL RISK</span></div>
-              
-              <div style="margin-top: 16px; font-size: 12px; color: var(--text-secondary);" id="predExplanationText">
-                Heavy rainfall and high soil saturation are currently the primary contributors to landslide risk.
+            <div style="display: flex; flex-direction: column; gap: 16px; padding: 4px 0;">
+              <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin: 0;">
+                Use your device's current location to get its GPS coordinates. Once detected, location-based landslide factors are automatically retrieved from the central gateway.
+              </p>
+
+              <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <button type="button" class="btn-primary" id="btnAiGetLocation" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; font-size: 13px; font-weight: 700; cursor: pointer;">
+                  <i data-lucide="refresh-cw" id="aiLocBtnIcon"></i>
+                  <span id="aiLocBtnText">Refresh Location</span>
+                </button>
+                <button type="button" class="btn-secondary" id="btnAiGpsLocation" title="Detect GPS coordinates using device geolocation" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; font-size: 13px; font-weight: 600; cursor: pointer;">
+                  <i data-lucide="crosshair"></i>
+                  <span>Use Device GPS</span>
+                </button>
               </div>
 
-              <div style="margin-top: 20px;" id="predXaiBarsContainer">
-                <!-- XAI Bars rendered by JS -->
+              <!-- Status Box -->
+              <div class="card-inner-box" style="padding: 12px 16px;">
+                <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 4px;">
+                  Status:
+                </div>
+                <div style="font-size: 14px; font-weight: 700; color: var(--text-secondary); display: flex; align-items: center; gap: 8px;" id="aiLocStatusDisplay">
+                  <span class="status-dot" style="background: var(--text-muted); box-shadow: none;" id="aiLocStatusDot"></span>
+                  <span id="aiLocStatusState">Location not detected</span>
+                </div>
               </div>
+
+              <!-- Coordinates Grid (Latitude, Longitude & Accuracy) -->
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px;">
+                <div class="card-inner-box" style="padding: 12px 16px;">
+                  <label for="aiLocLatitude" style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 6px; cursor: pointer;">
+                    Latitude:
+                  </label>
+                  <input type="number" step="any" min="-90" max="90" class="form-input ai-coord-input" id="aiLocLatitude" placeholder="e.g. 30.764350" autocomplete="off">
+                </div>
+
+                <div class="card-inner-box" style="padding: 12px 16px;">
+                  <label for="aiLocLongitude" style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 6px; cursor: pointer;">
+                    Longitude:
+                  </label>
+                  <input type="number" step="any" min="-180" max="180" class="form-input ai-coord-input" id="aiLocLongitude" placeholder="e.g. 76.781719" autocomplete="off">
+                </div>
+
+                <div class="card-inner-box" style="padding: 12px 16px;">
+                  <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 6px;">
+                    Accuracy:
+                  </div>
+                  <div style="font-size: 18px; font-weight: 800; color: var(--text-accent); font-family: monospace; height: 38px; display: flex; align-items: center;" id="aiLocAccuracy">
+                    —
+                  </div>
+                </div>
+              </div>
+
+              <!-- Error Message Alert Container -->
+              <div class="loc-message-box" id="aiLocMessageBox" style="display: none; font-size: 12px; padding: 10px 14px; border-radius: 6px;"></div>
+            </div>
+          </div>
+
+          <!-- Landslide Factor Information Section -->
+          <div class="factors-dashboard-wrap" id="aiFactorsDashboardWrap">
+            
+            <!-- V4 AI Landslide Intelligence Prediction Card -->
+            <div class="card v4-ai-card" id="v4AiCard" style="width: 100%;">
+              <div class="card-header" style="flex-wrap: wrap; gap: 10px;">
+                <div class="card-title">
+                  <i data-lucide="brain-circuit" style="color: #38bdf8;"></i>
+                  <span>AI Risk Prediction</span>
+                  <span class="v4-model-tag" id="v4ModelTag">V4 Intelligence</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <span class="factor-source-badge" id="v4PipelineBadge" title="Server-side XGBoost + OneHotEncoder pipeline">
+                    Pipeline: XGBoost + OHE
+                  </span>
+                  <span class="factor-source-badge badge-gray" id="v4ThresholdBadge">
+                    Threshold: 0.2675
+                  </span>
+                  <span class="factor-source-badge badge-gray" id="v4StatusBadge">
+                    Awaiting Location
+                  </span>
+                </div>
+              </div>
+
+              <!-- Top Metrics Grid -->
+              <div class="v4-metrics-grid">
+                <!-- 1. Hazard Probability -->
+                <div class="v4-metric-box">
+                  <div class="v4-metric-label">Hazard Output (ML)</div>
+                  <div class="v4-metric-val-row">
+                    <span class="v4-metric-value" id="v4HazardProb">—</span>
+                    <span class="v4-hazard-badge badge-gray" id="v4HazardBadge">Awaiting</span>
+                  </div>
+                  <div class="v4-metric-sub" id="v4HazardSub">Decision Threshold: 0.2675 (26.75%)</div>
+                </div>
+
+                <!-- 2. Overall Composite Risk -->
+                <div class="v4-metric-box">
+                  <div class="v4-metric-label">Composite Risk Level</div>
+                  <div class="v4-metric-val-row">
+                    <span class="v4-risk-badge badge-na" id="v4RiskBadge">NA</span>
+                    <span class="v4-metric-score" id="v4RiskScore">—</span>
+                  </div>
+                  <div class="v4-metric-sub" id="v4RiskSub">Hazard × Exposure × Vulnerability / 10000</div>
+                </div>
+
+                <!-- 3. Exposure Score -->
+                <div class="v4-metric-box">
+                  <div class="v4-metric-label">Exposure Score</div>
+                  <div class="v4-metric-val-row">
+                    <span class="v4-metric-value" id="v4ExposureScore">—</span>
+                    <span class="v4-metric-unit">/ 100</span>
+                  </div>
+                  <div class="v4-metric-sub" id="v4ExposureSub">Nearest Urban Centre: —</div>
+                </div>
+
+                <!-- 4. Vulnerability Score -->
+                <div class="v4-metric-box">
+                  <div class="v4-metric-label">Vulnerability Score</div>
+                  <div class="v4-metric-val-row">
+                    <span class="v4-metric-value" id="v4VulnerabilityScore">—</span>
+                    <span class="v4-metric-unit">/ 100</span>
+                  </div>
+                  <div class="v4-metric-sub" id="v4VulnerabilitySub">Urban Schools Footprint: —</div>
+                </div>
+              </div>
+
+              <!-- 12 Verified V4 Input Factors Grid -->
+              <div class="v4-factors-section">
+                <div class="v4-section-header">
+                  <div class="v4-section-title">
+                    <i data-lucide="sliders" style="width: 14px; height: 14px; color: #38bdf8;"></i>
+                    12 Verified V4 Model Inputs
+                  </div>
+                  <span class="v4-policy-badge" title="Unknown environmental factors are never converted to zero">NA Policy: Strict Missing Isolation</span>
+                </div>
+
+                <div class="v4-factors-grid" id="v4FactorsGrid">
+                  <div class="v4-factor-chip">
+                    <span class="v4-factor-name">1. District</span>
+                    <span class="v4-factor-val" id="v4FeatDistrict">—</span>
+                  </div>
+                  <div class="v4-factor-chip">
+                    <span class="v4-factor-name">2. State</span>
+                    <span class="v4-factor-val" id="v4FeatState">—</span>
+                  </div>
+                  <div class="v4-factor-chip">
+                    <span class="v4-factor-name">3. Material Involved</span>
+                    <span class="v4-factor-val val-unavailable" id="v4FeatMaterial">Unavailable</span>
+                  </div>
+                  <div class="v4-factor-chip">
+                    <span class="v4-factor-name">4. Elevation</span>
+                    <span class="v4-factor-val" id="v4FeatElevation">—</span>
+                  </div>
+                  <div class="v4-factor-chip">
+                    <span class="v4-factor-name">5. Slope</span>
+                    <span class="v4-factor-val val-unavailable" id="v4FeatSlope">Unavailable</span>
+                  </div>
+                  <div class="v4-factor-chip">
+                    <span class="v4-factor-name">6. Aspect</span>
+                    <span class="v4-factor-val val-unavailable" id="v4FeatAspect">Unavailable</span>
+                  </div>
+                  <div class="v4-factor-chip">
+                    <span class="v4-factor-name">7. Annual Rainfall</span>
+                    <span class="v4-factor-val val-unavailable" id="v4FeatRainfall">Unavailable</span>
+                  </div>
+                  <div class="v4-factor-chip">
+                    <span class="v4-factor-name">8. Land Cover</span>
+                    <span class="v4-factor-val val-unavailable" id="v4FeatLandcover">Unavailable</span>
+                  </div>
+                  <div class="v4-factor-chip">
+                    <span class="v4-factor-name">9. Soil Moisture</span>
+                    <span class="v4-factor-val" id="v4FeatSoilMoist">—</span>
+                  </div>
+                  <div class="v4-factor-chip">
+                    <span class="v4-factor-name">10. NDVI</span>
+                    <span class="v4-factor-val val-unavailable" id="v4FeatNdvi">Unavailable</span>
+                  </div>
+                  <div class="v4-factor-chip">
+                    <span class="v4-factor-name">11. Latitude</span>
+                    <span class="v4-factor-val" id="v4FeatLatitude">—</span>
+                  </div>
+                  <div class="v4-factor-chip">
+                    <span class="v4-factor-name">12. Longitude</span>
+                    <span class="v4-factor-val" id="v4FeatLongitude">—</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- V4 Explanation Signal Banner -->
+              <div class="v4-explanation-box" id="v4ExplanationBox">
+                <div class="v4-explanation-header">
+                  <i data-lucide="info" style="width: 14px; height: 14px; color: #38bdf8;"></i>
+                  <span class="v4-explanation-title">V4 Explanation Signal (Rule-Based Criteria)</span>
+                </div>
+                <div class="v4-explanation-text" id="v4ExplanationText">
+                  Awaiting coordinates. Click "Refresh Location" or enter manual coordinates to assess location.
+                </div>
+              </div>
+
+              <!-- Recommended Actions Box -->
+              <div class="v4-actions-box" id="v4ActionsBox" style="display: none;">
+                <div class="v4-actions-header">
+                  <i data-lucide="shield-check" style="width: 14px; height: 14px; color: #22c55e;"></i>
+                  <span class="v4-actions-title">V4 Recommended Actions</span>
+                </div>
+                <ul class="v4-actions-list" id="v4ActionsList"></ul>
+              </div>
+
+            </div>
+
+            <!-- Notice Banner -->
+            <div class="factors-banner" id="factorsBanner">
+              <div>
+                <div class="factors-banner-title">
+                  <i data-lucide="layers" style="color: #38bdf8;"></i>
+                  <span id="factorsBannerTitleText">Landslide Factor Information</span>
+                </div>
+                <div class="factors-banner-sub" id="factorsBannerSubText">
+                  Location-based causal factors collected through central FastAPI gateway. Strictly factor reporting.
+                </div>
+              </div>
+              <div id="factorsGatewayStatusBadge" class="factor-source-badge badge-gray">
+                Awaiting Location
+              </div>
+            </div>
+
+            <!-- 9 Factor Cards Grid -->
+            <div class="factors-grid" id="aiFactorsGrid">
+              <!-- 1. LOCATION -->
+              <div class="factor-card" id="cardFactorLocation">
+                <div class="factor-card-header">
+                  <div class="factor-card-title">
+                    <i data-lucide="navigation" style="color: #38bdf8;"></i> 1. Location
+                  </div>
+                  <span class="factor-source-badge" id="factorLocSource">HTML5 Geolocation</span>
+                </div>
+                <div class="factor-items-list">
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Latitude</span>
+                    <span class="factor-item-value" id="valFactorLat">—</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Longitude</span>
+                    <span class="factor-item-value" id="valFactorLon">—</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">GPS Accuracy</span>
+                    <span class="factor-item-value" id="valFactorAcc">—</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Status</span>
+                    <span class="factor-item-value val-highlight" id="valFactorLocStatus">Awaiting Fix</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 2. TERRAIN -->
+              <div class="factor-card" id="cardFactorTerrain">
+                <div class="factor-card-header">
+                  <div class="factor-card-title">
+                    <i data-lucide="mountain" style="color: #f59e0b;"></i> 2. Terrain
+                  </div>
+                  <span class="factor-source-badge" id="factorTerrainSource">Copernicus DEM</span>
+                </div>
+                <div class="factor-items-list">
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Elevation</span>
+                    <span class="factor-item-value val-highlight" id="valFactorElevation">—</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Slope</span>
+                    <span class="factor-item-value val-unavailable" id="valFactorSlope">Unavailable</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Aspect</span>
+                    <span class="factor-item-value val-unavailable" id="valFactorAspect">Unavailable</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Curvature</span>
+                    <span class="factor-item-value val-unavailable" id="valFactorCurvature">Unavailable</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Relative Relief</span>
+                    <span class="factor-item-value val-unavailable" id="valFactorRelief">Unavailable</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Drainage Density</span>
+                    <span class="factor-item-value val-unavailable" id="valFactorDrainage">Unavailable</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Flow Accumulation</span>
+                    <span class="factor-item-value val-unavailable" id="valFactorFlow">Unavailable</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Topographic Wetness Index (TWI)</span>
+                    <span class="factor-item-value val-unavailable" id="valFactorTwi">Unavailable</span>
+                  </div>
+                </div>
+                <div class="factor-reason-box" id="boxTerrainReason">
+                  DEM terrain raster processing not configured. A single elevation point cannot determine slope.
+                </div>
+              </div>
+
+              <!-- 3. RAINFALL & WATER -->
+              <div class="factor-card" id="cardFactorRainfall">
+                <div class="factor-card-header">
+                  <div class="factor-card-title">
+                    <i data-lucide="cloud-rain" style="color: #38bdf8;"></i> 3. Rainfall & Water
+                  </div>
+                  <span class="factor-source-badge" id="factorRainSource">Open-Meteo</span>
+                </div>
+                <div class="factor-items-list">
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Current Rainfall</span>
+                    <span class="factor-item-value" id="valFactorCurrentRain">—</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Rainfall Intensity</span>
+                    <span class="factor-item-value" id="valFactorRainIntensity">—</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">24-Hour Rainfall (Previous 24h)</span>
+                    <span class="factor-item-value val-highlight" id="valFactorRain24h">—</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">3-Day Rainfall (Previous 72h)</span>
+                    <span class="factor-item-value" id="valFactorRain3d">—</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">7-Day Rainfall (Previous 168h)</span>
+                    <span class="factor-item-value" id="valFactorRain7d">—</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Antecedent Rainfall (7 Days)</span>
+                    <span class="factor-item-value" id="valFactorRainAntecedent">—</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Surface Soil Moisture</span>
+                    <span class="factor-item-value val-highlight" id="valFactorSoilMoisture">—</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Moisture (0–1 cm / 1–3 cm)</span>
+                    <span class="factor-item-value" id="valFactorSmDepths1">—</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Moisture (3–9 cm / 9–27 cm)</span>
+                    <span class="factor-item-value" id="valFactorSmDepths2">—</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 4. SOIL -->
+              <div class="factor-card" id="cardFactorSoil">
+                <div class="factor-card-header">
+                  <div class="factor-card-title">
+                    <i data-lucide="sprout" style="color: #22c55e;"></i> 4. Soil
+                  </div>
+                  <span class="factor-source-badge badge-gray" id="factorSoilSource">Open-Meteo / SoilGrids</span>
+                </div>
+                <div class="factor-items-list">
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Soil Moisture (Volumetric)</span>
+                    <span class="factor-item-value val-highlight" id="valFactorSoilMoist2">—</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Soil Type</span>
+                    <span class="factor-item-value val-unavailable" id="valFactorSoilType">Unavailable</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Sand %</span>
+                    <span class="factor-item-value val-unavailable" id="valFactorSand">Unavailable</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Silt %</span>
+                    <span class="factor-item-value val-unavailable" id="valFactorSilt">Unavailable</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Clay %</span>
+                    <span class="factor-item-value val-unavailable" id="valFactorClay">Unavailable</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Soil Depth</span>
+                    <span class="factor-item-value val-unavailable" id="valFactorSoilDepth">Unavailable</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Bulk Density</span>
+                    <span class="factor-item-value val-unavailable" id="valFactorBulkDensity">Unavailable</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Organic Carbon</span>
+                    <span class="factor-item-value val-unavailable" id="valFactorOrganicCarbon">Unavailable</span>
+                  </div>
+                </div>
+                <div class="factor-reason-box" id="boxSoilReason">
+                  Pedological dataset / SoilGrids raster not configured locally.
+                </div>
+              </div>
+
+              <!-- 5. GEOLOGY -->
+              <div class="factor-card" id="cardFactorGeology">
+                <div class="factor-card-header">
+                  <div class="factor-card-title">
+                    <i data-lucide="shield-alert" style="color: #a855f7;"></i> 5. Geology
+                  </div>
+                  <span class="factor-source-badge badge-gray">GSI / SEISAT</span>
+                </div>
+                <div class="factor-items-list">
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Geological Formation</span>
+                    <span class="factor-item-value val-unavailable">Unavailable</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Rock Type</span>
+                    <span class="factor-item-value val-unavailable">Unavailable</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Lithology</span>
+                    <span class="factor-item-value val-unavailable">Unavailable</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Fault / Fracture Information</span>
+                    <span class="factor-item-value val-unavailable">Unavailable</span>
+                  </div>
+                </div>
+                <div class="factor-reason-box">
+                  Geological Survey of India (GSI) 1:50k vector dataset not configured locally.
+                </div>
+              </div>
+
+              <!-- 6. LAND COVER / VEGETATION -->
+              <div class="factor-card" id="cardFactorLandCover">
+                <div class="factor-card-header">
+                  <div class="factor-card-title">
+                    <i data-lucide="trees" style="color: #10b981;"></i> 6. Land Cover & Vegetation
+                  </div>
+                  <span class="factor-source-badge badge-gray">ESA WorldCover (2021)</span>
+                </div>
+                <div class="factor-items-list">
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Land Cover</span>
+                    <span class="factor-item-value val-unavailable">Unavailable</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Vegetation / Forest Cover</span>
+                    <span class="factor-item-value val-unavailable">Unavailable</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">NDVI</span>
+                    <span class="factor-item-value val-unavailable">Unavailable</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Built-up / Bare Land Status</span>
+                    <span class="factor-item-value val-unavailable">Unavailable</span>
+                  </div>
+                </div>
+                <div class="factor-reason-box">
+                  ESA WorldCover 2021 offline raster not configured locally. Reference product: ESA WorldCover 2021 (annual composite, not live).
+                </div>
+              </div>
+
+              <!-- 7. HUMAN / INFRASTRUCTURE -->
+              <div class="factor-card" id="cardFactorInfrastructure">
+                <div class="factor-card-header">
+                  <div class="factor-card-title">
+                    <i data-lucide="construction" style="color: #f97316;"></i> 7. Infrastructure Proximity
+                  </div>
+                  <span class="factor-source-badge" id="factorOsmSource">OpenStreetMap</span>
+                </div>
+                <div class="factor-items-list">
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Distance to Nearest Road</span>
+                    <span class="factor-item-value val-highlight" id="valFactorDistRoad">—</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Distance to Nearest Highway</span>
+                    <span class="factor-item-value" id="valFactorDistHighway">—</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Distance to Nearest River</span>
+                    <span class="factor-item-value" id="valFactorDistRiver">—</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Nearby Infrastructure Buffer</span>
+                    <span class="factor-item-value" id="valFactorInfraBuffer">—</span>
+                  </div>
+                </div>
+                <div class="factor-reason-box note-blue">
+                  Distance to road is a measurable spatial factor. Road cutting risk not inferred.
+                </div>
+              </div>
+
+              <!-- 8. EARTHQUAKE -->
+              <div class="factor-card" id="cardFactorEarthquake">
+                <div class="factor-card-header">
+                  <div class="factor-card-title">
+                    <i data-lucide="activity" style="color: #ef4444;"></i> 8. Earthquake Activity
+                  </div>
+                  <span class="factor-source-badge" id="factorEqSource">USGS Hazards</span>
+                </div>
+                <div class="factor-items-list">
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Recent Activity (300 km)</span>
+                    <span class="factor-item-value" id="valFactorEqActivity">—</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Nearest Event Magnitude</span>
+                    <span class="factor-item-value" id="valFactorEqMag">—</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Epicenter Distance</span>
+                    <span class="factor-item-value" id="valFactorEqDist">—</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Hypocenter Depth</span>
+                    <span class="factor-item-value" id="valFactorEqDepth">—</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Event Time</span>
+                    <span class="factor-item-value" id="valFactorEqTime">—</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 9. HISTORICAL LANDSLIDES -->
+              <div class="factor-card" id="cardFactorHistorical">
+                <div class="factor-card-header">
+                  <div class="factor-card-title">
+                    <i data-lucide="history" style="color: #eab308;"></i> 9. Historical Landslides
+                  </div>
+                  <span class="factor-source-badge badge-gray">ISRO Landslide Atlas</span>
+                </div>
+                <div class="factor-items-list">
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Historical Landslide Count Nearby</span>
+                    <span class="factor-item-value val-unavailable">Unavailable</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Nearest Historical Landslide</span>
+                    <span class="factor-item-value val-unavailable">Unavailable</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Distance to Nearest Landslide</span>
+                    <span class="factor-item-value val-unavailable">Unavailable</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Historical Landslide Density</span>
+                    <span class="factor-item-value val-unavailable">Unavailable</span>
+                  </div>
+                  <div class="factor-item-row">
+                    <span class="factor-item-label">Historical Trigger Mechanism</span>
+                    <span class="factor-item-value val-unavailable">Unavailable</span>
+                  </div>
+                </div>
+                <div class="factor-reason-box">
+                  ISRO Landslide Atlas of India / NASA Global Landslide Catalog not configured locally. Historical datasets, not live feeds.
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
@@ -315,35 +892,364 @@
 
       <!-- MODULE 4: WEATHER & RAINFALL -->
       <section class="module-page" id="weather-monitoring">
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title"><i data-lucide="cloud-rain"></i> NER Weather & Monsoonal Rainfall Analytics</div>
-          </div>
-          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
-            <div>
-              <canvas id="weatherChart" height="200"></canvas>
+        <!-- Main Weather Dashboard Container -->
+        <div class="weather-dashboard-container">
+          
+          <!-- Top Header / Live Status Bar -->
+          <div class="card weather-header-card">
+            <div class="weather-header-flex">
+              <div class="weather-header-title-group">
+                <div class="card-title">
+                  <i data-lucide="cloud-rain"></i> North-East India Weather & Rainfall Analytics
+                </div>
+                <div class="weather-header-subtitle">
+                  Comprehensive district-wise monsoonal precipitation and real-time atmospheric monitoring across all 8 North Eastern states
+                </div>
+              </div>
+              <div class="weather-header-actions">
+                <span class="weather-live-badge">
+                  <span class="live-dot-pulse"></span> LIVE WEATHER DATA
+                </span>
+                <span class="weather-source-tag">Source: Open-Meteo &amp; IMD Standards</span>
+                <span class="weather-timestamp" id="weatherLastUpdated">Updating...</span>
+                <button class="btn-weather-refresh" id="btnWeatherRefresh" title="Force Refresh Weather Data">
+                  <i data-lucide="refresh-cw" id="iconWeatherRefresh"></i> Refresh Now
+                </button>
+              </div>
             </div>
-            <div style="background: #172036; padding: 16px; border-radius: 8px;">
-              <div style="font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 12px;">Causal Physics Pipeline</div>
-              <div style="display: flex; flex-direction: column; gap: 10px; font-size: 12px;">
-                <div style="padding: 8px; background: #0f172a; border-radius: 6px; border-left: 3px solid #38bdf8;">
-                  🌧️ Torrential Rainfall (165mm)
+            
+            <!-- Error Banner (Hidden by default) -->
+            <div class="weather-error-banner" id="weatherErrorBanner" style="display: none;">
+              <div class="weather-error-content">
+                <i data-lucide="alert-triangle"></i>
+                <span id="weatherErrorMessage">Failed to fetch meteorological data.</span>
+              </div>
+              <button class="btn-weather-retry" id="btnWeatherRetry">
+                <i data-lucide="rotate-ccw"></i> Retry
+              </button>
+            </div>
+
+            <!-- Location Selection Toolbar -->
+            <div class="weather-location-toolbar">
+              <!-- State & District Dropdowns -->
+              <div class="weather-select-group">
+                <div class="weather-input-field">
+                  <label for="selectWeatherState"><i data-lucide="map"></i> Select State (All 8 NER States)</label>
+                  <select class="weather-select-control" id="selectWeatherState">
+                    <option value="">-- Choose State --</option>
+                    <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+                    <option value="Assam">Assam</option>
+                    <option value="Manipur">Manipur</option>
+                    <option value="Meghalaya" selected>Meghalaya</option>
+                    <option value="Mizoram">Mizoram</option>
+                    <option value="Nagaland">Nagaland</option>
+                    <option value="Sikkim">Sikkim</option>
+                    <option value="Tripura">Tripura</option>
+                  </select>
                 </div>
-                <div style="text-align: center; color: var(--text-muted);">↓</div>
-                <div style="padding: 8px; background: #0f172a; border-radius: 6px; border-left: 3px solid #eab308;">
-                  💧 Soil Saturation (82%)
+                
+                <div class="weather-input-field">
+                  <label for="selectWeatherDistrict"><i data-lucide="map-pin"></i> Select District</label>
+                  <select class="weather-select-control" id="selectWeatherDistrict">
+                    <option value="">-- Loading Districts... --</option>
+                  </select>
                 </div>
-                <div style="text-align: center; color: var(--text-muted);">↓</div>
-                <div style="padding: 8px; background: #0f172a; border-radius: 6px; border-left: 3px solid #f97316;">
-                  ⛰️ Slope Instability (37°)
-                </div>
-                <div style="text-align: center; color: var(--text-muted);">↓</div>
-                <div style="padding: 8px; background: #0f172a; border-radius: 6px; border-left: 3px solid #ef4444; font-weight: 700;">
-                  🚨 Landslide Trigger (87% Prob)
+              </div>
+
+              <div class="weather-separator-line"></div>
+
+              <!-- Coordinate Inputs -->
+              <div class="weather-coords-group">
+                <div class="weather-coord-inputs">
+                  <div class="weather-input-field coord-field">
+                    <label for="inputWeatherLat">Latitude</label>
+                    <input type="number" step="any" min="-90" max="90" class="weather-input-control" id="inputWeatherLat" placeholder="25.5788" value="25.5788">
+                  </div>
+                  <div class="weather-input-field coord-field">
+                    <label for="inputWeatherLon">Longitude</label>
+                    <input type="number" step="any" min="-180" max="180" class="weather-input-control" id="inputWeatherLon" placeholder="91.8933" value="91.8933">
+                  </div>
                 </div>
               </div>
             </div>
+
+            <!-- Active Location Banner -->
+            <div class="weather-active-location-banner" id="weatherActiveLocationBanner">
+              <div class="active-loc-left">
+                <div class="active-loc-pin"><i data-lucide="map-pin"></i></div>
+                <div>
+                  <div class="active-loc-title" id="weatherActiveLocationTitle">East Khasi Hills, Meghalaya</div>
+                  <div class="active-loc-meta" id="weatherActiveLocationMeta">
+                    Headquarters: Shillong • Coordinates: 25.5788°N, 91.8933°E • Timezone: Asia/Kolkata (IST)
+                  </div>
+                </div>
+              </div>
+              <div class="active-loc-badge" id="weatherActiveElevationBadge">
+                <i data-lucide="mountain"></i> Centroid Station
+              </div>
+            </div>
           </div>
+
+          <!-- Current Weather Conditions Grid (6 Key Meteorological Metrics) -->
+          <div class="weather-metrics-grid">
+            <!-- Current Temperature -->
+            <div class="card weather-metric-card">
+              <div class="metric-card-header">
+                <span class="metric-label">Current Temperature</span>
+                <i data-lucide="thermometer" class="metric-icon icon-temp"></i>
+              </div>
+              <div class="metric-value-row">
+                <span class="metric-value" id="valWeatherTemp">--</span>
+                <span class="metric-unit">°C</span>
+              </div>
+              <div class="metric-footer-note" id="valWeatherTempRange">
+                Min: --°C • Max: --°C
+              </div>
+            </div>
+
+            <!-- Current Rainfall Rate -->
+            <div class="card weather-metric-card">
+              <div class="metric-card-header">
+                <span class="metric-label">Current Rainfall</span>
+                <i data-lucide="cloud-drizzle" class="metric-icon icon-rain"></i>
+              </div>
+              <div class="metric-value-row">
+                <span class="metric-value" id="valWeatherCurrentRain">--</span>
+                <span class="metric-unit">mm/h</span>
+              </div>
+              <div class="metric-footer-note" id="valWeatherRainIntensity">
+                Intensity: None
+              </div>
+            </div>
+
+            <!-- Today's Cumulative Rainfall -->
+            <div class="card weather-metric-card">
+              <div class="metric-card-header">
+                <span class="metric-label">Today's Cumulative Rain</span>
+                <i data-lucide="cloud-rain" class="metric-icon icon-rain-acc"></i>
+              </div>
+              <div class="metric-value-row">
+                <span class="metric-value" id="valWeatherTodayRain">--</span>
+                <span class="metric-unit">mm</span>
+              </div>
+              <div class="metric-footer-note">
+                Since 00:00 IST Midnight
+              </div>
+            </div>
+
+            <!-- Humidity -->
+            <div class="card weather-metric-card">
+              <div class="metric-card-header">
+                <span class="metric-label">Relative Humidity</span>
+                <i data-lucide="droplets" class="metric-icon icon-humidity"></i>
+              </div>
+              <div class="metric-value-row">
+                <span class="metric-value" id="valWeatherHumidity">--</span>
+                <span class="metric-unit">%</span>
+              </div>
+              <div class="metric-footer-note" id="valWeatherHumidityStatus">
+                Atmospheric moisture level
+              </div>
+            </div>
+
+            <!-- Wind Speed -->
+            <div class="card weather-metric-card">
+              <div class="metric-card-header">
+                <span class="metric-label">Wind Speed (10m)</span>
+                <i data-lucide="wind" class="metric-icon icon-wind"></i>
+              </div>
+              <div class="metric-value-row">
+                <span class="metric-value" id="valWeatherWind">--</span>
+                <span class="metric-unit">km/h</span>
+              </div>
+              <div class="metric-footer-note">
+                Surface anemometer speed
+              </div>
+            </div>
+
+            <!-- Weather Condition -->
+            <div class="card weather-metric-card">
+              <div class="metric-card-header">
+                <span class="metric-label">Weather Condition</span>
+                <i data-lucide="sun" class="metric-icon icon-condition" id="iconConditionLucide"></i>
+              </div>
+              <div class="metric-value-row">
+                <span class="metric-value-cond" id="valWeatherCondition">Loading...</span>
+              </div>
+              <div class="metric-footer-note" id="valWeatherWmoCode">
+                WMO Code: --
+              </div>
+            </div>
+          </div>
+
+          <!-- Rainfall Statistical Highlights Panel (8 IMD-compliant statistics) -->
+          <div class="card weather-stats-panel-card">
+            <div class="card-header">
+              <div class="card-title">
+                <i data-lucide="bar-chart-2"></i> District Rainfall Statistical Overview (IMD Benchmark)
+              </div>
+              <div class="stats-panel-subtag">
+                IMD Definition: Rainy Day &ge; 2.5mm | Heavy Rain &ge; 64.5mm
+              </div>
+            </div>
+            <div class="weather-stats-grid">
+              <div class="stats-item-box">
+                <div class="stats-item-label">Past 7 Days Total</div>
+                <div class="stats-item-value" id="statRainTotal7d">-- mm</div>
+                <div class="stats-item-sub">Past week cumulative</div>
+              </div>
+              <div class="stats-item-box">
+                <div class="stats-item-label">Past 30 Days Total</div>
+                <div class="stats-item-value" id="statRainTotal30d">-- mm</div>
+                <div class="stats-item-sub">30-day cumulative</div>
+              </div>
+              <div class="stats-item-box">
+                <div class="stats-item-label">7-Day Daily Average</div>
+                <div class="stats-item-value" id="statRainAvg7d">-- mm/day</div>
+                <div class="stats-item-sub">Mean daily intensity</div>
+              </div>
+              <div class="stats-item-box">
+                <div class="stats-item-label">30-Day Daily Average</div>
+                <div class="stats-item-value" id="statRainAvg30d">-- mm/day</div>
+                <div class="stats-item-sub">Monthly daily mean</div>
+              </div>
+              <div class="stats-item-box">
+                <div class="stats-item-label">Max Daily (7 Days)</div>
+                <div class="stats-item-value" id="statRainMax7d">-- mm</div>
+                <div class="stats-item-sub" id="statWettestDay7d">Wettest: --</div>
+              </div>
+              <div class="stats-item-box">
+                <div class="stats-item-label">Max Daily (30 Days)</div>
+                <div class="stats-item-value" id="statRainMax30d">-- mm</div>
+                <div class="stats-item-sub" id="statWettestDay30d">Wettest: --</div>
+              </div>
+              <div class="stats-item-box">
+                <div class="stats-item-label">Rainy Days (&ge;2.5mm)</div>
+                <div class="stats-item-value val-accent" id="statRainyDays30d">-- / 30</div>
+                <div class="stats-item-sub" id="statRainyDays7d">7-Day: -- days</div>
+              </div>
+              <div class="stats-item-box">
+                <div class="stats-item-label">Heavy Rain Days (&ge;64.5mm)</div>
+                <div class="stats-item-value val-warning" id="statHeavyRainDays30d">-- days</div>
+                <div class="stats-item-sub">Extreme monsoonal events</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Charts Row: Trend Chart (with 7d/30d switcher) & District Comparison -->
+          <div class="weather-charts-grid">
+            <!-- Trend Chart -->
+            <div class="card weather-chart-card">
+              <div class="card-header weather-chart-header">
+                <div class="card-title">
+                  <i data-lucide="trending-up"></i> Historical Daily Rainfall Trend
+                </div>
+                <div class="chart-toggle-group">
+                  <button class="btn-chart-toggle active" id="btnTrend7d">Past 7 Days</button>
+                  <button class="btn-chart-toggle" id="btnTrend30d">Past 30 Days</button>
+                </div>
+              </div>
+              <div class="weather-chart-canvas-wrap">
+                <canvas id="weatherTrendChart"></canvas>
+              </div>
+              <div class="chart-footnote" id="weatherTrendFootnote">
+                Showing daily precipitation bars with 3-day moving trend line. Hover bars for exact mm values and IMD rating.
+              </div>
+            </div>
+
+            <!-- Statewide District Comparison Chart -->
+            <div class="card weather-chart-card">
+              <div class="card-header weather-chart-header">
+                <div class="card-title">
+                  <i data-lucide="bar-chart"></i> <span id="labelDistrictComparisonTitle">Statewide District Comparison</span>
+                </div>
+                <span class="comparison-period-badge">7-Day Total (mm)</span>
+              </div>
+              <div class="weather-chart-canvas-wrap">
+                <canvas id="weatherComparisonChart"></canvas>
+              </div>
+              <div class="chart-footnote">
+                Comparison of 7-day cumulative rainfall across key administrative districts in the selected state.
+              </div>
+            </div>
+          </div>
+
+          <!-- Monthly Rainfall Summary & 7-Day Day-by-Day Analysis Table -->
+          <div class="weather-lower-grid">
+            
+            <!-- 7-Day Daily Detailed Weather Table -->
+            <div class="card weather-table-card">
+              <div class="card-header">
+                <div class="card-title">
+                  <i data-lucide="calendar"></i> 7-Day Day-by-Day Meteorological Analysis
+                </div>
+                <span class="table-subtag">Recent daily observations</span>
+              </div>
+              <div class="weather-table-wrap">
+                <table class="weather-daily-table" id="weatherDailyTable">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Weather Condition</th>
+                      <th>Min Temp</th>
+                      <th>Max Temp</th>
+                      <th>Rainfall (mm)</th>
+                      <th>IMD Classification</th>
+                    </tr>
+                  </thead>
+                  <tbody id="weatherDailyTableBody">
+                    <tr>
+                      <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">Loading daily observations...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Monthly Rainfall Summary Card -->
+            <div class="card weather-monthly-card">
+              <div class="card-header">
+                <div class="card-title">
+                  <i data-lucide="pie-chart"></i> Monthly Precipitation Comparison
+                </div>
+              </div>
+              <div class="weather-monthly-container">
+                <!-- Current Month Card -->
+                <div class="monthly-summary-box current-month-box">
+                  <div class="monthly-box-tag">CURRENT MONTH</div>
+                  <div class="monthly-month-name" id="monthlyCurrentName">--</div>
+                  <div class="monthly-rain-value" id="monthlyCurrentRain">-- mm</div>
+                  <div class="monthly-stats-row">
+                    <div><span>Rainy Days:</span> <b id="monthlyCurrentRainyDays">--</b></div>
+                    <div><span>Daily Avg:</span> <b id="monthlyCurrentAvg">-- mm</b></div>
+                  </div>
+                </div>
+
+                <!-- Previous Month Card -->
+                <div class="monthly-summary-box prev-month-box">
+                  <div class="monthly-box-tag">PREVIOUS MONTH</div>
+                  <div class="monthly-month-name" id="monthlyPrevName">--</div>
+                  <div class="monthly-rain-value" id="monthlyPrevRain">-- mm</div>
+                  <div class="monthly-stats-row">
+                    <div><span>Monthly Total:</span> <b id="monthlyPrevTotal">-- mm</b></div>
+                    <div><span>Status:</span> <b>Official Record</b></div>
+                  </div>
+                </div>
+
+                <!-- IMD North-East India Context Alert Box -->
+                <div class="weather-ner-climate-note">
+                  <div class="ner-climate-title"><i data-lucide="info"></i> NER Monsoonal Climate Context</div>
+                  <p>
+                    The North Eastern Region experiences heavy orographic precipitation influenced by the South-West Monsoon. 
+                    Rainfall &ge; 64.5mm/day significantly elevates pore-water pressure along steep residual soil strata, 
+                    exponentially increasing slope failure hazards.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
         </div>
       </section>
 
@@ -401,8 +1307,8 @@
               <button type="submit" class="btn-primary">Submit Report (Auto-Syncs Offline)</button>
             </form>
 
-            <div style="background: #172036; padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
-              <div style="font-weight: 700; margin-bottom: 12px;">Submitted Field Incidents Feed</div>
+            <div class="card-inner-box" style="padding: 16px;">
+              <div style="font-weight: 700; margin-bottom: 12px; color: var(--text-primary);">Submitted Field Incidents Feed</div>
               <div id="fieldReportsList" style="display: flex; flex-direction: column; gap: 10px;">
                 <!-- Populated by JS -->
               </div>
@@ -442,21 +1348,21 @@
             <div class="card-title"><i data-lucide="building-2"></i> MDoNER Disaster Authority Command Center</div>
           </div>
           <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px;">
-            <div style="background: #172036; padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+            <div class="card-inner-box" style="padding: 16px;">
               <div style="font-size: 11px; color: var(--text-secondary);">Total Monitored Zones</div>
-              <div style="font-size: 24px; font-weight: 800; color: #38bdf8;">42 Districts</div>
+              <div style="font-size: 24px; font-weight: 800; color: var(--text-accent);">42 Districts</div>
             </div>
-            <div style="background: #172036; padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+            <div class="card-inner-box" style="padding: 16px;">
               <div style="font-size: 11px; color: var(--text-secondary);">Critical Risk Areas</div>
-              <div style="font-size: 24px; font-weight: 800; color: #ef4444;">3 Zones</div>
+              <div style="font-size: 24px; font-weight: 800; color: var(--risk-critical);">3 Zones</div>
             </div>
-            <div style="background: #172036; padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+            <div class="card-inner-box" style="padding: 16px;">
               <div style="font-size: 11px; color: var(--text-secondary);">Active SDRF Teams</div>
-              <div style="font-size: 24px; font-weight: 800; color: #22c55e;">12 Deployed</div>
+              <div style="font-size: 24px; font-weight: 800; color: var(--risk-low);">12 Deployed</div>
             </div>
-            <div style="background: #172036; padding: 16px; border-radius: 8px; border: 1px solid var(--border-color);">
+            <div class="card-inner-box" style="padding: 16px;">
               <div style="font-size: 11px; color: var(--text-secondary);">Lifeline Highways at Risk</div>
-              <div style="font-size: 24px; font-weight: 800; color: #f97316;">NH-6, NH-10</div>
+              <div style="font-size: 24px; font-weight: 800; color: var(--risk-high);">NH-6, NH-10</div>
             </div>
           </div>
         </div>
@@ -468,8 +1374,8 @@
           <div class="card-header">
             <div class="card-title"><i data-lucide="brain-circuit"></i> Explainable AI (XAI) Model Feature Attribution</div>
           </div>
-          <div style="padding: 16px; background: #172036; border-radius: 8px;">
-            <div style="font-size: 14px; font-weight: 700; margin-bottom: 16px;">Landslide Risk Factor Weights (SHAP Analysis)</div>
+          <div class="card-inner-box" style="padding: 16px;">
+            <div style="font-size: 14px; font-weight: 700; margin-bottom: 16px; color: var(--text-primary);">Landslide Risk Factor Weights (SHAP Analysis)</div>
             <div id="fullXaiContainer">
               <!-- Populated by JS -->
             </div>
@@ -537,9 +1443,9 @@
                 <input type="range" min="5" max="60" value="37" style="width: 100%;" id="simSlopeSlider">
               </div>
             </div>
-            <div style="background: #172036; padding: 20px; border-radius: 8px; border: 1px solid var(--border-color); text-align: center; display: flex; flex-direction: column; justify-content: center;">
+            <div class="card-inner-box" style="padding: 20px; text-align: center; display: flex; flex-direction: column; justify-content: center;">
               <div style="font-size: 12px; color: var(--text-secondary);">Simulated Risk Gauge</div>
-              <div style="font-size: 48px; font-weight: 800; color: #ef4444;" id="simProbResult">87.0%</div>
+              <div style="font-size: 48px; font-weight: 800; color: var(--risk-critical);" id="simProbResult">87.0%</div>
               <div style="margin-top: 6px;" id="simBadgeWrap"><span class="risk-badge CRITICAL">CRITICAL RISK</span></div>
             </div>
           </div>
