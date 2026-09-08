@@ -65,9 +65,9 @@ class ApiService {
     return RiskPredictionModel(
       probability: double.parse(prob.toStringAsFixed(1)),
       riskLevel: risk,
-      confidence: 91.5,
+      confidence: 65.0,
       recommendedAction: 'Active monitoring and slope inspection required.',
-      explanation: 'Rainfall intensity and soil saturation are driving current slope stability index.',
+      explanation: '[Offline Synthetic Estimate] Backend AI model unreachable. Estimated from heuristic slope-rainfall formula.',
       contributingFactors: {'Rainfall': 38.0, 'SoilMoisture': 28.0, 'Slope': 22.0, 'Historical': 12.0},
     );
   }

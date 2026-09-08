@@ -25,6 +25,8 @@ from backend.weather_service import (
     fetch_comprehensive_weather, fetch_state_district_comparison
 )
 from backend.ai_risk_service import predict_ai_risk, get_model_bundle
+from backend.gis_service import get_filtered_district_risk_geojson
+from backend.source_registry import SOURCE_REGISTRY, build_provenance, get_source
 
 app = FastAPI(
     title="NER-SAFE API Server",
@@ -279,7 +281,8 @@ def get_weather_comprehensive_endpoint(
             "daily_7d": weather_data["daily_7d"],
             "daily_30d": weather_data["daily_30d"],
             "statistics": weather_data["statistics"],
-            "monthly_summary": weather_data["monthly_summary"]
+            "monthly_summary": weather_data["monthly_summary"],
+            "metadata": weather_data.get("metadata", {})
         }
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Weather gateway error: {str(e)}")
@@ -320,40 +323,156 @@ def get_weather_comparison_endpoint(state: str):
 
 @app.get("/api/weather")
 def get_weather():
-    return {
-        "currentRainfallMm": 165,
-        "rainfall1h": 18,
-        "rainfall6h": 72,
-        "rainfall24h": 165,
-        "rainfall7d": 410,
-        "anomalyPercentage": 42.5,
-        "soilMoisturePercentage": 82,
-        "temperatureC": 21.4,
-        "humidityPercentage": 94,
-        "hourlyTrend": [
-            {"time": "00:00", "rainfall": 5},
-            {"time": "04:00", "rainfall": 12},
-            {"time": "08:00", "rainfall": 28},
-            {"time": "12:00", "rainfall": 45},
-            {"time": "16:00", "rainfall": 57},
-            {"time": "20:00", "rainfall": 18}
+    """
+    Dashboard weather endpoint.
+    Attempts to fetch real meteorological data from Open-Meteo for regional reference point (Aizawl).
+    Clearly identifies source and falls back to honest unavailable payload if offline.
+    """
+    try:
+        payload = fetch_comprehensive_weather(lat=23.7271, lon=92.7176, force_refresh=False)
+        current = payload.get("current", {})
+        stats = payload.get("statistics", {})
+        daily_7d = payload.get("daily_7d", [])
+
+        trend = [
+            {"time": d.get("date_label", ""), "rainfall": d.get("rainfall", 0.0)}
+            for d in (daily_7d[-6:] if daily_7d else [])
         ]
-    }
+
+        return {
+            "data_type": "real",
+            "source": "Open-Meteo Weather & Forecast API",
+            "note": "Atmospheric data retrieved dynamically from Open-Meteo.",
+            "currentRainfallMm": current.get("today_rainfall") or current.get("rainfall", 0.0),
+            "rainfall1h": current.get("rainfall", 0.0),
+            "rainfall6h": None,
+            "rainfall24h": current.get("today_rainfall", 0.0),
+            "rainfall7d": stats.get("rainfall_7d"),
+            "anomalyPercentage": None,
+            "soilMoisturePercentage": None,
+            "temperatureC": current.get("temperature"),
+            "humidityPercentage": current.get("humidity"),
+            "hourlyTrend": trend,
+            "provenance": build_provenance(
+                source_id="open_meteo_weather",
+                data_type="Observed / Forecast",
+                status="available",
+                notes="Atmospheric data retrieved dynamically from Open-Meteo for regional center (Aizawl)."
+            )
+        }
+    except Exception as e:
+        return {
+            "data_type": "unavailable",
+            "source": "Open-Meteo (unavailable)",
+            "note": f"Weather data currently unavailable: {str(e)[:120]}.",
+            "currentRainfallMm": None,
+            "rainfall1h": None,
+            "rainfall6h": None,
+            "rainfall24h": None,
+            "rainfall7d": None,
+            "anomalyPercentage": None,
+            "soilMoisturePercentage": None,
+            "temperatureC": None,
+            "humidityPercentage": None,
+            "hourlyTrend": [],
+            "provenance": build_provenance(
+                source_id="open_meteo_weather",
+                data_type="Observed / Forecast",
+                status="unavailable",
+                notes=f"Weather service unreachable: {str(e)[:120]}"
+            )
+        }
 
 @app.get("/api/alerts")
 def get_alerts():
+    """
+    Returns alert records derived from the NER reference dataset (demo simulation data).
+    These are representative locations for demonstration, NOT live sensor readings.
+    """
     critical_alerts = [
-        loc for loc in LOCATIONS if loc["riskLevel"] in ["CRITICAL", "HIGH"]
+        {
+            **loc,
+            "data_type": "demo_simulation",
+            "source": "RIFT NER Reference Dataset (Demo Simulation)"
+        }
+        for loc in LOCATIONS if loc["riskLevel"] in ["CRITICAL", "HIGH"]
     ]
-    return {"alerts": critical_alerts}
+    return {
+        "alerts": critical_alerts,
+        "data_type": "demo_simulation",
+        "source": "RIFT NER Reference Dataset (Demo Simulation)",
+        "note": "Alert locations are representative NER reference points for demonstration. Not live sensor data.",
+        "provenance": build_provenance(
+            source_id="demo_simulation",
+            data_type="Demo Data / Synthetic Simulation",
+            status="demo",
+            notes="Alert locations are representative NER reference points for demonstration. Not live sensor data."
+        )
+    }
+
+# ==========================================
+# GIS DISTRICT RISK MAP APIS
+# ==========================================
+
+@app.get("/api/gis/risk-districts")
+def get_gis_district_risk_endpoint(state: Optional[str] = "all", force: bool = False):
+    """
+    Returns enriched GeoJSON FeatureCollection of North Eastern Region administrative districts
+    with AI-derived landslide risk scores, classifications, physical parameters, and provenance.
+    Supports filtering by state ('all' or specific state name like 'Mizoram', 'Assam', etc.).
+    """
+    try:
+        data = get_filtered_district_risk_geojson(state=state, force_refresh=force)
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate district GIS risk: {str(e)}")
 
 @app.get("/api/infrastructure")
 def get_infrastructure():
-    return {"infrastructure": INFRASTRUCTURE_ASSETS}
+    """
+    Returns NER infrastructure reference records (representative data, not live sensor feeds).
+    """
+    labeled = [
+        {
+            **asset,
+            "data_type": "reference",
+            "source": "NER Infrastructure Reference (OpenStreetMap + NHAI)"
+        }
+        for asset in INFRASTRUCTURE_ASSETS
+    ]
+    return {
+        "infrastructure": labeled,
+        "data_type": "reference",
+        "source": "NER Infrastructure Reference (OpenStreetMap + NHAI)",
+        "note": "Infrastructure records are reference profiles. Live structural sensor telemetry is currently unconfigured.",
+        "provenance": build_provenance(
+            source_id="infrastructure_reference",
+            data_type="Reference Asset Profiles",
+            status="reference",
+            notes="Infrastructure alignments from NHAI & OSM. Live structural sensor telemetry currently unavailable."
+        )
+    }
 
 @app.get("/api/historical")
 def get_historical():
-    return HISTORICAL_ANALYTICS
+    """
+    Returns NER historical landslide statistics (GSI + published research reference estimates).
+    Values are reference estimates compiled from published literature, not real-time data.
+    """
+    result = dict(HISTORICAL_ANALYTICS)
+    result["data_type"] = "reference_estimate"
+    result["source"] = "GSI Landslide Inventory + Published NER Research (Reference Estimates)"
+    result["note"] = (
+        "Yearly incident counts are reference estimates compiled from GSI landslide inventory "
+        "and published NER disaster research. Exact figures are not independently verified real-time data."
+    )
+    result["provenance"] = build_provenance(
+        source_id="gsi_inventory",
+        data_type="Historical / Reference Estimates",
+        status="reference",
+        notes="Yearly trends compiled from Geological Survey of India (GSI) NLSM inventory and published academic literature."
+    )
+    return result
 
 @app.get("/api/translations")
 def get_translations():
@@ -361,7 +480,14 @@ def get_translations():
 
 @app.get("/api/reports")
 def get_field_reports():
-    return {"reports": FIELD_REPORTS_DB}
+    return {
+        "reports": FIELD_REPORTS_DB,
+        "provenance": build_provenance(
+            source_id="citizen_reports",
+            data_type="User-Reported (Officer / Citizen Submissions)",
+            status="active"
+        )
+    }
 
 @app.post("/api/reports")
 def submit_field_report(report: FieldReportRequest):
@@ -377,21 +503,54 @@ def submit_field_report(report: FieldReportRequest):
         "severity": report.severity,
         "status": "Submitted",
         "submittedAgo": "Just now",
-        "description": report.description
+        "description": report.description,
+        "data_type": "user_reported"
     }
     FIELD_REPORTS_DB.insert(0, item)
     return {"status": "success", "report": item}
 
 @app.get("/api/satellite")
 def get_satellite():
+    """
+    Satellite / SAR monitoring endpoint.
+    Real Sentinel-1 / ISRO SAR imagery is NOT configured in this local deployment.
+    Returns an honest 'unavailable' response — zero fake stock photos.
+    """
     return {
-        "location": "Aizawl Ridge Sector 4",
-        "lastCaptureDate": "2026-09-03",
-        "beforeImage": "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop&q=80",
-        "afterImage": "https://images.unsplash.com/photo-1511497584788-8767611136f6?w=800&auto=format&fit=crop&q=80",
-        "sarDeformationMm": 14.2,
-        "vegetationAnomalyIndex": "-0.34 (Vegetation Loss Detected)",
-        "scarAlert": "Potential 120-meter landslide scar forming along slope contour."
+        "status": "unavailable",
+        "data_type": "unavailable",
+        "source": "Sentinel-1 SAR / ISRO Bhuvan (Not Configured)",
+        "note": (
+            "Real satellite SAR imagery and ground deformation telemetry require a configured "
+            "ESA Sentinel Hub or ISRO Bhuvan API credential. "
+            "No live satellite SAR telemetry is available in this local deployment."
+        ),
+        "location": None,
+        "lastCaptureDate": None,
+        "beforeImage": None,
+        "afterImage": None,
+        "sarDeformationMm": None,
+        "vegetationAnomalyIndex": None,
+        "scarAlert": None,
+        "provenance": build_provenance(
+            source_id="esri_imagery",
+            data_type="Satellite SAR Telemetry",
+            status="unavailable",
+            notes="Optical basemap imagery available via Esri tile service, but live SAR deformation monitoring is unconfigured."
+        )
+    }
+
+@app.get("/api/provenance/sources")
+def get_provenance_sources_endpoint():
+    """
+    Universal Source Registry endpoint:
+    Returns the authoritative metadata, official URLs, licenses, and attribution for all
+    data sources used across the RIFT platform.
+    """
+    return {
+        "status": "success",
+        "total_sources": len(SOURCE_REGISTRY),
+        "sources": SOURCE_REGISTRY
     }
 
 @app.get("/api/demo/trigger")

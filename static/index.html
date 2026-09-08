@@ -46,12 +46,6 @@
         <span id="networkStatusText">ONLINE</span>
       </div>
 
-      <!-- Demo Trigger Button -->
-      <button class="btn-demo-trigger" id="btnRunDemo">
-        <i data-lucide="play-circle"></i>
-        <span id="labelRunDemo">RUN DEMO SCENARIO</span>
-      </button>
-
       <!-- Theme Toggle Button -->
       <button class="btn-theme-toggle" id="btnThemeToggle" aria-label="Toggle Light or Dark Mode" title="Toggle Light / Dark Mode">
         <i data-lucide="sun" id="iconThemeSun"></i>
@@ -142,6 +136,10 @@
         <i data-lucide="sliders" class="nav-icon"></i>
         <span class="nav-text">Landslide Simulator</span>
       </a>
+      <a class="nav-item" data-target="provenance-registry">
+        <i data-lucide="shield-check" class="nav-icon"></i>
+        <span class="nav-text">Data Transparency</span>
+      </a>
     </nav>
 
     <!-- Main Viewport -->
@@ -155,6 +153,7 @@
           <div class="card" style="display: flex; flex-direction: column; gap: 14px;">
             <div class="card-header">
               <div class="card-title"><i data-lucide="activity"></i> NER Risk Overview</div>
+              <span class="provenance-badge-demo" style="font-size: 9px; padding: 2px 6px; border-radius: 4px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-weight: 600;">NER Reference Profile</span>
             </div>
             
             <div style="display: flex; flex-direction: column; gap: 10px;">
@@ -291,24 +290,236 @@
 
       <!-- MODULE 2: GIS RISK MAP FULL VIEW -->
       <section class="module-page" id="gis-map-view">
-        <div class="card" style="flex: 1; display: flex; flex-direction: column;">
-          <div class="card-header">
-            <div class="card-title"><i data-lucide="map-pin"></i> Interactive NER GIS Landslide Risk Map</div>
-            <div style="display: flex; gap: 10px;">
-              <select class="select-control" id="gisStateFilter">
-                <option value="ALL">All NER States (8)</option>
-                <option value="Mizoram">Mizoram</option>
-                <option value="Nagaland">Nagaland</option>
-                <option value="Meghalaya">Meghalaya</option>
-                <option value="Sikkim">Sikkim</option>
-                <option value="Assam">Assam</option>
-                <option value="Arunachal Pradesh">Arunachal Pradesh</option>
-                <option value="Manipur">Manipur</option>
-                <option value="Tripura">Tripura</option>
-              </select>
+        <div class="card" style="flex: 1; display: flex; flex-direction: column; gap: 14px;">
+          <!-- Top Control Header -->
+          <div class="card-header" style="flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <div class="card-title" style="margin: 0;">
+                <i data-lucide="map" style="color: var(--risk-high);"></i>
+                <span>Interactive NER GIS Landslide Risk Map</span>
+              </div>
+              <span class="badge-pill" id="gisModelBadge" style="font-size: 11px; background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); padding: 3px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px;">
+                <i data-lucide="cpu" style="width: 12px; height: 12px;"></i>
+                <span id="gisModelBadgeText">Model: RIFT V2 Physical</span>
+              </span>
+              <span class="badge-pill" id="gisDistrictsBadge" style="font-size: 11px; background: rgba(34, 197, 94, 0.12); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); padding: 3px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px;">
+                <i data-lucide="layers" style="width: 12px; height: 12px;"></i>
+                <span id="gisDistrictsCountText">78 Districts</span>
+              </span>
+            </div>
+
+            <!-- Controls Toolbar -->
+            <div class="gis-toolbar" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-left: auto;">
+              <!-- State Selector -->
+              <div style="display: flex; align-items: center; gap: 6px;">
+                <label for="gisStateFilter" style="font-size: 11px; font-weight: 600; color: var(--text-secondary);">State:</label>
+                <select class="select-control" id="gisStateFilter" style="min-width: 160px;">
+                  <option value="ALL">All NER States (8)</option>
+                  <option value="Arunachal Pradesh">Arunachal Pradesh (15)</option>
+                  <option value="Assam">Assam (23)</option>
+                  <option value="Manipur">Manipur (9)</option>
+                  <option value="Meghalaya">Meghalaya (7)</option>
+                  <option value="Mizoram">Mizoram (8)</option>
+                  <option value="Nagaland">Nagaland (8)</option>
+                  <option value="Sikkim">Sikkim (4)</option>
+                  <option value="Tripura">Tripura (4)</option>
+                </select>
+              </div>
+
+              <!-- Basemap Layer Selector -->
+              <div class="gis-layer-btn-group" role="group" aria-label="Map Basemap Layers">
+                <button type="button" class="gis-layer-btn active" data-layer="street" id="gisBtnStreet" title="OpenStreetMap Street View">
+                  <i data-lucide="map" style="width: 13px; height: 13px;"></i> Street
+                </button>
+                <button type="button" class="gis-layer-btn" data-layer="satellite" id="gisBtnSatellite" title="ESRI High-Resolution World Satellite Imagery">
+                  <i data-lucide="satellite" style="width: 13px; height: 13px;"></i> Satellite
+                </button>
+                <button type="button" class="gis-layer-btn" data-layer="terrain" id="gisBtnTerrain" title="ESRI Topographic Relief & Contours">
+                  <i data-lucide="mountain" style="width: 13px; height: 13px;"></i> Terrain
+                </button>
+              </div>
+
+              <!-- Refresh Button -->
+              <button type="button" class="btn-secondary" id="gisBtnRefresh" title="Refresh AI Landslide Risk Data" style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 11px; font-weight: 600;">
+                <i data-lucide="refresh-cw" id="gisRefreshIcon" style="width: 13px; height: 13px;"></i>
+                <span>Refresh</span>
+              </button>
             </div>
           </div>
-          <div id="fullGisMap" style="flex: 1; border-radius: 8px; overflow: hidden; min-height: 450px;"></div>
+
+          <!-- Main GIS Grid: Map + District Intelligence Side Panel -->
+          <div class="gis-workspace-grid">
+            <!-- Left: Interactive Map -->
+            <div class="gis-map-wrapper">
+              <div id="fullGisMap"></div>
+              
+              <!-- Floating Map Legend Overlay -->
+              <div class="gis-map-legend" id="gisMapLegend">
+                <div class="gis-legend-header">
+                  <span class="gis-legend-title">Landslide Hazard Risk</span>
+                  <span class="gis-legend-sub" id="gisLegendUpdated">Updated: Just now</span>
+                </div>
+                <div class="gis-legend-items">
+                  <div class="gis-legend-row">
+                    <span class="gis-legend-dot" style="background: #22c55e;"></span>
+                    <span>Low Risk (&lt; 20%)</span>
+                  </div>
+                  <div class="gis-legend-row">
+                    <span class="gis-legend-dot" style="background: #eab308;"></span>
+                    <span>Moderate Risk (20% &ndash; 35%)</span>
+                  </div>
+                  <div class="gis-legend-row">
+                    <span class="gis-legend-dot" style="background: #f97316;"></span>
+                    <span>High Risk (35% &ndash; 60%)</span>
+                  </div>
+                  <div class="gis-legend-row">
+                    <span class="gis-legend-dot" style="background: #ef4444;"></span>
+                    <span>Very High Risk (&ge; 60%)</span>
+                  </div>
+                  <div class="gis-legend-row">
+                    <span class="gis-legend-dot" style="background: #94a3b8;"></span>
+                    <span>Data Unavailable</span>
+                  </div>
+                </div>
+                <div class="gis-legend-footer">
+                  <div class="gis-legend-meta">Assessment: <b>District representative-point assessment</b></div>
+                  <div class="gis-legend-meta">Model: <b id="gisLegendModelVer">rift_landslide_model_v2</b></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: District Information Panel -->
+            <div class="gis-district-panel" id="gisDistrictPanel">
+              <!-- Empty State (initially displayed) -->
+              <div class="gis-empty-state" id="gisEmptyState">
+                <div class="gis-empty-icon"><i data-lucide="map-pin" style="width: 32px; height: 32px; color: var(--text-muted);"></i></div>
+                <div class="gis-empty-title">District Risk Inspector</div>
+                <p class="gis-empty-desc">
+                  Click any administrative district polygon on the map or select a state above to inspect AI landslide hazard scores, dynamic physical factor weights, and official historical telemetry.
+                </p>
+                <div class="gis-quick-stats">
+                  <div class="gis-stat-pill">
+                    <div class="gis-stat-num">78</div>
+                    <div class="gis-stat-label">Districts</div>
+                  </div>
+                  <div class="gis-stat-pill">
+                    <div class="gis-stat-num">8</div>
+                    <div class="gis-stat-label">NER States</div>
+                  </div>
+                  <div class="gis-stat-pill">
+                    <div class="gis-stat-num">9,992</div>
+                    <div class="gis-stat-label">GSI Points</div>
+                  </div>
+                </div>
+                <div style="font-size: 11px; color: var(--text-muted); line-height: 1.4; border-top: 1px solid var(--border-color); padding-top: 10px; width: 100%; text-align: left;">
+                  <b>Tip:</b> Hover over any district boundary for quick identification, or click to lock focus and examine terrain factors.
+                </div>
+              </div>
+
+              <!-- Active District Details View (populated upon click) -->
+              <div class="gis-details-content" id="gisDetailsContent" style="display: none;">
+                <!-- Header -->
+                <div class="gis-detail-header">
+                  <div>
+                    <div class="gis-detail-district" id="gisDetailDistrict">District Name</div>
+                    <div class="gis-detail-state" id="gisDetailState">State, Northeast India</div>
+                  </div>
+                  <span class="risk-badge" id="gisDetailRiskBadge">HIGH</span>
+                </div>
+
+                <!-- Hazard Score & Assessment Badge -->
+                <div class="gis-score-card">
+                  <div class="gis-score-col">
+                    <span class="gis-score-label">Hazard Score</span>
+                    <span class="gis-score-val" id="gisDetailHazardScore">0.0%</span>
+                  </div>
+                  <div class="gis-score-col">
+                    <span class="gis-score-label">Methodology</span>
+                    <span class="gis-badge-method" id="gisDetailAssessmentType">District representative-point assessment</span>
+                  </div>
+                </div>
+
+                <!-- Dynamic Explanation Box -->
+                <div class="gis-explanation-box" id="gisExplanationBox">
+                  <div class="gis-exp-title">
+                    <i data-lucide="sparkles" style="width: 14px; height: 14px; color: #f59e0b;"></i>
+                    <span>Model Contributing Factors:</span>
+                  </div>
+                  <p class="gis-exp-text" id="gisDetailExplanation">
+                    Evaluating physical terrain and monsoon rainfall inputs...
+                  </p>
+                </div>
+
+                <!-- Physical Factors Grid -->
+                <div class="gis-factors-section">
+                  <div class="gis-factors-title">
+                    <i data-lucide="activity" style="width: 13px; height: 13px;"></i>
+                    <span>Environmental & Physical Factors</span>
+                  </div>
+                  <div class="gis-factors-grid">
+                    <div class="gis-factor-cell">
+                      <span class="factor-name">Elevation (DEM)</span>
+                      <span class="factor-val" id="gisFactorElevation">—</span>
+                    </div>
+                    <div class="gis-factor-cell">
+                      <span class="factor-name">Slope Gradient</span>
+                      <span class="factor-val" id="gisFactorSlope">—</span>
+                    </div>
+                    <div class="gis-factor-cell">
+                      <span class="factor-name">Annual Rainfall</span>
+                      <span class="factor-val" id="gisFactorRainfall">—</span>
+                    </div>
+                    <div class="gis-factor-cell">
+                      <span class="factor-name">Soil Moisture</span>
+                      <span class="factor-val" id="gisFactorSoil">—</span>
+                    </div>
+                    <div class="gis-factor-cell">
+                      <span class="factor-name">NDVI (Vegetation)</span>
+                      <span class="factor-val" id="gisFactorNdvi">—</span>
+                    </div>
+                    <div class="gis-factor-cell">
+                      <span class="factor-name">Land Cover Class</span>
+                      <span class="factor-val" id="gisFactorLandcover">—</span>
+                    </div>
+                    <div class="gis-factor-cell">
+                      <span class="factor-name">Historical Landslides (10km)</span>
+                      <span class="factor-val" id="gisFactorGsi">—</span>
+                    </div>
+                    <div class="gis-factor-cell">
+                      <span class="factor-name">Seismic Zone</span>
+                      <span class="factor-val" id="gisFactorSeismic">—</span>
+                    </div>
+                    <div class="gis-factor-cell factor-unavail">
+                      <span class="factor-name">Geology / Lithology</span>
+                      <span class="factor-val unavail-text">Unavailable</span>
+                    </div>
+                    <div class="gis-factor-cell factor-unavail">
+                      <span class="factor-name">Distance to Road</span>
+                      <span class="factor-val unavail-text">Unavailable</span>
+                    </div>
+                    <div class="gis-factor-cell factor-unavail">
+                      <span class="factor-name">Distance to River</span>
+                      <span class="factor-val unavail-text">Unavailable</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Transparency Sources -->
+                <div class="gis-transparency-card">
+                  <div class="gis-trans-title">
+                    <i data-lucide="shield-check" style="width: 12px; height: 12px; color: #38bdf8;"></i>
+                    <span>Verified Data Sources</span>
+                  </div>
+                  <ul class="gis-trans-list">
+                    <li><b>Administrative Boundaries:</b> Survey of India Official Boundaries</li>
+                    <li><b>Terrain Model:</b> Copernicus GLO-90 DEM (ESA/EU)</li>
+                    <li><b>Historical Inventory:</b> Geological Survey of India (9,992 points)</li>
+                    <li><b>Precipitation & Soil:</b> IMD Normals & Open-Meteo Reanalysis</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -908,9 +1119,9 @@
               </div>
               <div class="weather-header-actions">
                 <span class="weather-live-badge">
-                  <span class="live-dot-pulse"></span> LIVE WEATHER DATA
+                  <span class="live-dot-pulse"></span> LATEST AVAILABLE WEATHER DATA
                 </span>
-                <span class="weather-source-tag">Source: Open-Meteo &amp; IMD Standards</span>
+                <span class="weather-source-tag">Rainfall: Open-Meteo Reanalysis | Classification: IMD Benchmark</span>
                 <span class="weather-timestamp" id="weatherLastUpdated">Updating...</span>
                 <button class="btn-weather-refresh" id="btnWeatherRefresh" title="Force Refresh Weather Data">
                   <i data-lucide="refresh-cw" id="iconWeatherRefresh"></i> Refresh Now
@@ -973,7 +1184,7 @@
               </div>
             </div>
 
-            <!-- Active Location Banner -->
+            <!-- Active Location Banner & Provenance Pill -->
             <div class="weather-active-location-banner" id="weatherActiveLocationBanner">
               <div class="active-loc-left">
                 <div class="active-loc-pin"><i data-lucide="map-pin"></i></div>
@@ -984,8 +1195,13 @@
                   </div>
                 </div>
               </div>
-              <div class="active-loc-badge" id="weatherActiveElevationBadge">
-                <i data-lucide="mountain"></i> Centroid Station
+              <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <div class="active-loc-badge" id="weatherDataSourceBadge" title="Data Source Provenance">
+                  <i data-lucide="database"></i> <span id="weatherDataSourceLabel">Source: Open-Meteo Reanalysis</span>
+                </div>
+                <div class="active-loc-badge" id="weatherActiveElevationBadge">
+                  <i data-lucide="mountain"></i> Centroid Station
+                </div>
               </div>
             </div>
           </div>
@@ -1089,7 +1305,7 @@
                 <i data-lucide="bar-chart-2"></i> District Rainfall Statistical Overview (IMD Benchmark)
               </div>
               <div class="stats-panel-subtag">
-                IMD Definition: Rainy Day &ge; 2.5mm | Heavy Rain &ge; 64.5mm
+                Data: Open-Meteo Reanalysis • Thresholds: IMD Classification Benchmark (Rainy Day &ge; 2.5mm | Heavy Rain &ge; 64.5mm)
               </div>
             </div>
             <div class="weather-stats-grid">
@@ -1142,7 +1358,7 @@
             <div class="card weather-chart-card">
               <div class="card-header weather-chart-header">
                 <div class="card-title">
-                  <i data-lucide="trending-up"></i> Historical Daily Rainfall Trend
+                  <i data-lucide="trending-up"></i> Daily Rainfall Trend &amp; Moving Average
                 </div>
                 <div class="chart-toggle-group">
                   <button class="btn-chart-toggle active" id="btnTrend7d">Past 7 Days</button>
@@ -1153,7 +1369,7 @@
                 <canvas id="weatherTrendChart"></canvas>
               </div>
               <div class="chart-footnote" id="weatherTrendFootnote">
-                Showing daily precipitation bars with 3-day moving trend line. Hover bars for exact mm values and IMD rating.
+                Precipitation data: Open-Meteo Reanalysis. 3-day moving trend line shown. Hover bars for exact mm values and IMD rating.
               </div>
             </div>
 
@@ -1169,7 +1385,7 @@
                 <canvas id="weatherComparisonChart"></canvas>
               </div>
               <div class="chart-footnote">
-                Comparison of 7-day cumulative rainfall across key administrative districts in the selected state.
+                Source: Open-Meteo Reanalysis 7-day cumulative rainfall across key administrative districts in the selected state.
               </div>
             </div>
           </div>
@@ -1183,7 +1399,7 @@
                 <div class="card-title">
                   <i data-lucide="calendar"></i> 7-Day Day-by-Day Meteorological Analysis
                 </div>
-                <span class="table-subtag">Recent daily observations</span>
+                <span class="table-subtag">Open-Meteo Daily Estimates • IMD Classification Standard</span>
               </div>
               <div class="weather-table-wrap">
                 <table class="weather-daily-table" id="weatherDailyTable">
@@ -1216,7 +1432,7 @@
               <div class="weather-monthly-container">
                 <!-- Current Month Card -->
                 <div class="monthly-summary-box current-month-box">
-                  <div class="monthly-box-tag">CURRENT MONTH</div>
+                  <div class="monthly-box-tag">CURRENT MONTH (TO DATE)</div>
                   <div class="monthly-month-name" id="monthlyCurrentName">--</div>
                   <div class="monthly-rain-value" id="monthlyCurrentRain">-- mm</div>
                   <div class="monthly-stats-row">
@@ -1232,7 +1448,7 @@
                   <div class="monthly-rain-value" id="monthlyPrevRain">-- mm</div>
                   <div class="monthly-stats-row">
                     <div><span>Monthly Total:</span> <b id="monthlyPrevTotal">-- mm</b></div>
-                    <div><span>Status:</span> <b>Official Record</b></div>
+                    <div><span>Status:</span> <b>Reanalysis Estimate</b></div>
                   </div>
                 </div>
 
@@ -1258,6 +1474,7 @@
         <div class="card">
           <div class="card-header">
             <div class="card-title"><i data-lucide="bell"></i> Emergency Early Warning Dispatch Center</div>
+            <span style="font-size: 10px; padding: 2px 8px; border-radius: 4px; background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-weight: 600;">Representative Demo Drill Feed</span>
           </div>
           <div id="fullAlertsList" style="display: flex; flex-direction: column; gap: 12px;">
             <!-- Populated by JS -->
@@ -1322,6 +1539,7 @@
         <div class="card">
           <div class="card-header">
             <div class="card-title"><i data-lucide="shield-alert"></i> Highway & Lifeline Infrastructure Vulnerability Matrix</div>
+            <span style="font-size: 10px; padding: 2px 8px; border-radius: 4px; background: rgba(245, 158, 11, 0.12); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); font-weight: 600;">Reference Profile • Live IoT Sensors Unavailable</span>
           </div>
           <table style="width: 100%; text-align: left; border-collapse: collapse; font-size: 13px;">
             <thead>
@@ -1338,6 +1556,10 @@
               <!-- Populated by JS -->
             </tbody>
           </table>
+          <div style="margin-top: 14px; padding: 10px 14px; background: var(--bg-card-inner); border-radius: 6px; border: 1px solid var(--border-color); font-size: 11px; color: var(--text-secondary); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <div>📌 <b>Data Provenance:</b> Highway alignments and lifeline corridors derived from <b>NHAI & OpenStreetMap</b> reference data.</div>
+            <div>⚠️ <b>Sensor Status:</b> Physical IoT slope tiltmeters and crack extensometers are <b>not configured</b> in this deployment.</div>
+          </div>
         </div>
       </section>
 
@@ -1346,6 +1568,7 @@
         <div class="card">
           <div class="card-header">
             <div class="card-title"><i data-lucide="building-2"></i> MDoNER Disaster Authority Command Center</div>
+            <span style="font-size: 10px; padding: 2px 8px; border-radius: 4px; background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-weight: 600;">Demonstration Command Profile</span>
           </div>
           <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px;">
             <div class="card-inner-box" style="padding: 16px;">
@@ -1400,8 +1623,12 @@
         <div class="card">
           <div class="card-header">
             <div class="card-title"><i data-lucide="line-chart"></i> Historical NER Landslide & Rainfall Trends (2021 - 2025)</div>
+            <span style="font-size: 10px; padding: 2px 8px; border-radius: 4px; background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-weight: 600;">GSI Inventory & Open-Meteo Reanalysis</span>
           </div>
           <canvas id="historicalChart" height="150"></canvas>
+          <div style="margin-top: 12px; font-size: 11px; color: var(--text-muted);">
+            📊 <b>Source Transparency:</b> Incident counts aggregated from Geological Survey of India (GSI) National Landslide Susceptibility Mapping (NLSM) database and Open-Meteo ERA5 Reanalysis archive.
+          </div>
         </div>
       </section>
 
@@ -1410,14 +1637,40 @@
         <div class="card">
           <div class="card-header">
             <div class="card-title"><i data-lucide="satellite"></i> Satellite Surface Deformation & Scar Detection</div>
+            <span style="font-size: 10px; padding: 2px 8px; border-radius: 4px; background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); font-weight: 600;">SAR Telemetry Unavailable</span>
           </div>
-          <div class="satellite-comparison-container">
-            <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&auto=format&fit=crop&q=80" class="satellite-img" alt="Before">
-            <img src="https://images.unsplash.com/photo-1511497584788-8767611136f6?w=800&auto=format&fit=crop&q=80" class="satellite-img satellite-after" alt="After" id="satAfterImg">
-            <div class="slider-handle" id="satSliderHandle"></div>
+          
+          <div class="card-inner-box" style="padding: 24px; text-align: center; margin-bottom: 16px; border: 1px dashed var(--border-color);">
+            <div style="width: 54px; height: 54px; border-radius: 50%; background: rgba(56, 189, 248, 0.1); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+              <i data-lucide="satellite-dish" style="width: 28px; height: 28px; color: #38bdf8;"></i>
+            </div>
+            <h3 style="font-size: 16px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">Live Sentinel-1 / ISRO SAR Telemetry Not Configured</h3>
+            <p style="font-size: 13px; color: var(--text-secondary); max-width: 680px; margin: 0 auto 16px; line-height: 1.5;">
+              In accordance with the <b>RIFT Global Real-Data & No-Fabrication Policy</b>, placeholder stock photographs and fabricated millimeter ground deformation values have been removed. Live interferometric SAR surface displacement analysis requires authenticated Copernicus Sentinel Hub or ISRO Bhuvan API credentials.
+            </p>
+            <div style="display: inline-flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
+              <button class="btn-primary" style="font-size: 12px; padding: 8px 16px;" onclick="document.querySelector('[data-target=\'gis-map-view\']').click(); switchBasemapLayer('satellite');">
+                <i data-lucide="layers"></i> View Verified Esri Satellite Basemap in GIS Map
+              </button>
+            </div>
           </div>
-          <div style="margin-top: 12px; font-size: 12px; color: var(--text-secondary);">
-            🛰️ Drag slider to compare pre-monsoon vs post-deluge SAR satellite imagery. Detected 14.2mm surface displacement on Aizawl Ridge Sector.
+
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;">
+            <div class="card-inner-box" style="padding: 14px;">
+              <div style="font-size: 11px; color: var(--text-secondary);">Optical Aerial Basemap</div>
+              <div style="font-size: 15px; font-weight: 700; color: var(--risk-low); margin-top: 4px;">Available (Esri Imagery)</div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">High-resolution static aerial composite active on GIS Risk Map.</div>
+            </div>
+            <div class="card-inner-box" style="padding: 14px;">
+              <div style="font-size: 11px; color: var(--text-secondary);">Interferometric SAR InSAR</div>
+              <div style="font-size: 15px; font-weight: 700; color: var(--text-muted); margin-top: 4px;">Unavailable</div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Requires active Copernicus Sentinel-1 radar pipeline.</div>
+            </div>
+            <div class="card-inner-box" style="padding: 14px;">
+              <div style="font-size: 11px; color: var(--text-secondary);">Multi-Spectral Scar Scanner</div>
+              <div style="font-size: 15px; font-weight: 700; color: var(--text-muted); margin-top: 4px;">Unavailable</div>
+              <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Sentinel-2 dNDVI post-event scar detection offline.</div>
+            </div>
           </div>
         </div>
       </section>
@@ -1427,6 +1680,7 @@
         <div class="card">
           <div class="card-header">
             <div class="card-title"><i data-lucide="sliders"></i> Interactive Monsoonal Landslide Risk Simulator</div>
+            <span style="font-size: 10px; padding: 2px 8px; border-radius: 4px; background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-weight: 600;">Interactive Synthetic Simulation Sandbox</span>
           </div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
             <div style="display: flex; flex-direction: column; gap: 16px;">
@@ -1444,7 +1698,7 @@
               </div>
             </div>
             <div class="card-inner-box" style="padding: 20px; text-align: center; display: flex; flex-direction: column; justify-content: center;">
-              <div style="font-size: 12px; color: var(--text-secondary);">Simulated Risk Gauge</div>
+              <div style="font-size: 12px; color: var(--text-secondary);">Simulated Risk Gauge (Synthetic Drill)</div>
               <div style="font-size: 48px; font-weight: 800; color: var(--risk-critical);" id="simProbResult">87.0%</div>
               <div style="margin-top: 6px;" id="simBadgeWrap"><span class="risk-badge CRITICAL">CRITICAL RISK</span></div>
             </div>
@@ -1452,7 +1706,171 @@
         </div>
       </section>
 
+      <!-- MODULE 14: DATA TRANSPARENCY & PROVENANCE REGISTRY -->
+      <section class="module-page" id="provenance-registry">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title"><i data-lucide="shield-check"></i> RIFT Global Data Provenance & Transparency Registry</div>
+            <span style="font-size: 10px; padding: 2px 8px; border-radius: 4px; background: rgba(34, 197, 94, 0.12); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); font-weight: 600;">Strict No-Fabrication Policy</span>
+          </div>
+
+          <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 20px;">
+            The RIFT / NER-SAFE platform implements an uncompromising, verifiable real-data integrity policy. All physical terrain parameters, meteorological inputs, and administrative geometries are sourced exclusively from authentic scientific databases and government agencies. Where live telemetry is not connected, it is honestly identified as <b>Unavailable</b>.
+          </p>
+
+          <div id="provenanceSourcesContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px;">
+            <div style="text-align: center; padding: 30px; color: var(--text-muted);">
+              Loading verified data source catalog...
+            </div>
+          </div>
+        </div>
+      </section>
+
     </main>
+  </div>
+
+  <!-- District Full Details Modal -->
+  <div class="modal-overlay" id="districtDetailsModal" role="dialog" aria-modal="true" aria-labelledby="modalDistrictTitle" style="display: none;">
+    <div class="modal-content district-modal-content">
+      <!-- Modal Top Bar -->
+      <div class="district-modal-header">
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <button type="button" class="btn-secondary modal-back-btn" id="btnBackFromDistrictModal" title="Back to GIS Map">
+            <i data-lucide="arrow-left"></i> Back to Map
+          </button>
+          <div>
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <h2 id="modalDistrictTitle" class="district-modal-title">District Full Intelligence</h2>
+              <span class="risk-badge" id="modalDistrictRiskBadge">HIGH</span>
+            </div>
+            <div id="modalDistrictState" class="district-modal-sub">State, Northeast India</div>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" id="btnCloseDistrictModal" aria-label="Close details modal">&times;</button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="district-modal-body">
+        <!-- Assessment Overview Banner -->
+        <div class="modal-overview-grid">
+          <div class="modal-stat-card">
+            <span class="modal-stat-label">Landslide Hazard Score</span>
+            <span class="modal-stat-value" id="modalHazardScore">0.0%</span>
+          </div>
+          <div class="modal-stat-card">
+            <span class="modal-stat-label">Assessment Methodology</span>
+            <span class="gis-badge-method" id="modalAssessmentType">District representative-point assessment</span>
+          </div>
+          <div class="modal-stat-card">
+            <span class="modal-stat-label">Model Engine</span>
+            <span class="modal-meta-text" id="modalModelVersion">rift_landslide_model_v2</span>
+            <span class="modal-meta-sub" id="modalDecisionThreshold">Threshold: 20.0%</span>
+          </div>
+          <div class="modal-stat-card">
+            <span class="modal-stat-label">Coordinates & Telemetry</span>
+            <span class="modal-meta-text" id="modalCoordinates">—</span>
+            <span class="modal-meta-sub" id="modalTimestamp">Updated recently</span>
+          </div>
+        </div>
+
+        <!-- Dynamic Contributing Factors (XAI Analysis) -->
+        <div class="modal-explanation-box">
+          <div class="modal-exp-title">
+            <i data-lucide="sparkles" style="color: #f59e0b;"></i>
+            <span>Model Contributing Factors (Explainable AI Analysis):</span>
+          </div>
+          <p class="modal-exp-text" id="modalExplanation">
+            Evaluating physical terrain, historical clustering, and meteorological inputs...
+          </p>
+        </div>
+
+        <!-- Complete Environmental & Physical Factors -->
+        <div class="modal-section-card">
+          <div class="modal-section-title">
+            <i data-lucide="activity" style="color: #38bdf8;"></i>
+            <span>Verified Physical & Environmental Factors</span>
+          </div>
+          <div class="modal-factors-grid">
+            <div class="modal-factor-item">
+              <span class="m-factor-label">Copernicus DEM Elevation</span>
+              <span class="m-factor-val" id="modalElevation">—</span>
+            </div>
+            <div class="modal-factor-item">
+              <span class="m-factor-label">Slope Gradient</span>
+              <span class="m-factor-val" id="modalSlope">—</span>
+            </div>
+            <div class="modal-factor-item">
+              <span class="m-factor-label">Annual Climatological Rainfall</span>
+              <span class="m-factor-val" id="modalRainfall">—</span>
+            </div>
+            <div class="modal-factor-item">
+              <span class="m-factor-label">Surface Soil Saturation</span>
+              <span class="m-factor-val" id="modalSoil">—</span>
+            </div>
+            <div class="modal-factor-item">
+              <span class="m-factor-label">NDVI Vegetation Greenness</span>
+              <span class="m-factor-val" id="modalNdvi">—</span>
+            </div>
+            <div class="modal-factor-item">
+              <span class="m-factor-label">Land Cover Classification</span>
+              <span class="m-factor-val" id="modalLandcover">—</span>
+            </div>
+            <div class="modal-factor-item">
+              <span class="m-factor-label">GSI Landslide Density (10 km)</span>
+              <span class="m-factor-val" id="modalGsi">—</span>
+            </div>
+            <div class="modal-factor-item">
+              <span class="m-factor-label">Seismic Hazard Zone</span>
+              <span class="m-factor-val" id="modalSeismic">—</span>
+            </div>
+            <div class="modal-factor-item factor-unavail">
+              <span class="m-factor-label">Geology / Lithology</span>
+              <span class="m-factor-val unavail-text">Unavailable</span>
+            </div>
+            <div class="modal-factor-item factor-unavail">
+              <span class="m-factor-label">Distance to Road Network</span>
+              <span class="m-factor-val unavail-text">Unavailable</span>
+            </div>
+            <div class="modal-factor-item factor-unavail">
+              <span class="m-factor-label">Distance to Major River Drainage</span>
+              <span class="m-factor-val unavail-text">Unavailable</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recommended Mitigation & Response Action -->
+        <div class="modal-section-card">
+          <div class="modal-section-title">
+            <i data-lucide="shield-alert" style="color: var(--risk-high);"></i>
+            <span>Recommended Mitigation & Disaster Response Protocol</span>
+          </div>
+          <p class="modal-action-text" id="modalRecommendedAction">
+            Maintain regular monitoring of precipitation and slope conditions.
+          </p>
+        </div>
+
+        <!-- Provenance & Scientific Transparency -->
+        <div class="modal-transparency-card">
+          <div class="modal-trans-title">
+            <i data-lucide="shield-check" style="color: #22c55e;"></i>
+            <span>Verified Scientific Data Provenance</span>
+          </div>
+          <div class="modal-trans-grid">
+            <div>• <b>Administrative Boundaries:</b> Survey of India Official Boundaries</div>
+            <div>• <b>Digital Elevation Model:</b> Copernicus GLO-90 DEM (ESA/EU)</div>
+            <div>• <b>Historical Landslide Inventory:</b> Geological Survey of India (GSI) 9,992 points</div>
+            <div>• <b>Rainfall Normals & Moisture:</b> IMD 30-Year Normals & Open-Meteo Reanalysis</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="district-modal-footer">
+        <button type="button" class="btn-primary" id="btnReturnToMapFooter" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; font-weight: 700; cursor: pointer;">
+          <i data-lucide="map"></i> Return to GIS Map
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- Leaflet JS -->

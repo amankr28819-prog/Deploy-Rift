@@ -1,0 +1,308 @@
+{
+  "evaluation_summary": {
+    "selected_model": "Random Forest",
+    "model_version": "rift_landslide_model_v2",
+    "total_samples": 20383,
+    "positive_samples": 9992,
+    "negative_samples": 10391,
+    "decision_threshold": 0.2,
+    "primary_metric": "Spatial GroupKFold ROC-AUC",
+    "spatial_roc_auc": 0.9435,
+    "spatial_f1": 0.7583,
+    "spatial_brier": 0.2838
+  },
+  "spatial_cv_results_by_model": {
+    "Logistic Regression": {
+      "roc_auc": 0.7941,
+      "roc_auc_std": 0.0329,
+      "pr_auc": 0.7962,
+      "brier_score": 0.3438,
+      "accuracy": 0.6525,
+      "precision": 0.8753,
+      "recall": 0.3394,
+      "f1": 0.4891,
+      "decision_threshold": 0.2,
+      "confusion_matrix": [
+        [
+          9908,
+          483
+        ],
+        [
+          6601,
+          3391
+        ]
+      ],
+      "training_time_s": 4.03
+    },
+    "Random Forest": {
+      "roc_auc": 0.9435,
+      "roc_auc_std": 0.0085,
+      "pr_auc": 0.9511,
+      "brier_score": 0.2838,
+      "accuracy": 0.8089,
+      "precision": 0.9977,
+      "recall": 0.6116,
+      "f1": 0.7583,
+      "decision_threshold": 0.2,
+      "confusion_matrix": [
+        [
+          10377,
+          14
+        ],
+        [
+          3881,
+          6111
+        ]
+      ],
+      "training_time_s": 16.34
+    },
+    "XGBoost": {
+      "roc_auc": 0.9049,
+      "roc_auc_std": 0.0151,
+      "pr_auc": 0.9058,
+      "brier_score": 0.4834,
+      "accuracy": 0.5154,
+      "precision": 0.9457,
+      "recall": 0.0122,
+      "f1": 0.0241,
+      "decision_threshold": 0.2,
+      "confusion_matrix": [
+        [
+          10384,
+          7
+        ],
+        [
+          9870,
+          122
+        ]
+      ],
+      "training_time_s": 15.18
+    },
+    "LightGBM": {
+      "roc_auc": 0.9121,
+      "roc_auc_std": 0.0097,
+      "pr_auc": 0.9141,
+      "brier_score": 0.4881,
+      "accuracy": 0.5113,
+      "precision": 1.0,
+      "recall": 0.003,
+      "f1": 0.006,
+      "decision_threshold": 0.2,
+      "confusion_matrix": [
+        [
+          10391,
+          0
+        ],
+        [
+          9962,
+          30
+        ]
+      ],
+      "training_time_s": 9.15
+    }
+  },
+  "random_cv_results_by_model": {
+    "Logistic Regression": {
+      "roc_auc": 0.9921,
+      "roc_auc_std": 0.0012,
+      "pr_auc": 0.9926,
+      "brier_score": 0.0352,
+      "accuracy": 0.9585,
+      "precision": 0.9648,
+      "recall": 0.95,
+      "f1": 0.9573,
+      "decision_threshold": 0.34,
+      "confusion_matrix": [
+        [
+          10045,
+          346
+        ],
+        [
+          500,
+          9492
+        ]
+      ],
+      "training_time_s": 6.38
+    },
+    "Random Forest": {
+      "roc_auc": 0.9949,
+      "roc_auc_std": 0.0006,
+      "pr_auc": 0.995,
+      "brier_score": 0.2078,
+      "accuracy": 0.8747,
+      "precision": 0.9976,
+      "recall": 0.7463,
+      "f1": 0.8538,
+      "decision_threshold": 0.2,
+      "confusion_matrix": [
+        [
+          10373,
+          18
+        ],
+        [
+          2535,
+          7457
+        ]
+      ],
+      "training_time_s": 16.77
+    },
+    "XGBoost": {
+      "roc_auc": 0.9858,
+      "roc_auc_std": 0.0015,
+      "pr_auc": 0.9866,
+      "brier_score": 0.3798,
+      "accuracy": 0.6183,
+      "precision": 0.9964,
+      "recall": 0.2221,
+      "f1": 0.3632,
+      "decision_threshold": 0.2,
+      "confusion_matrix": [
+        [
+          10383,
+          8
+        ],
+        [
+          7773,
+          2219
+        ]
+      ],
+      "training_time_s": 10.29
+    },
+    "LightGBM": {
+      "roc_auc": 0.9889,
+      "roc_auc_std": 0.0011,
+      "pr_auc": 0.9894,
+      "brier_score": 0.479,
+      "accuracy": 0.5198,
+      "precision": 1.0,
+      "recall": 0.0205,
+      "f1": 0.0402,
+      "decision_threshold": 0.2,
+      "confusion_matrix": [
+        [
+          10391,
+          0
+        ],
+        [
+          9787,
+          205
+        ]
+      ],
+      "training_time_s": 3.26
+    }
+  },
+  "leave_one_state_out_results": {
+    "Arunachal Pradesh": {
+      "Random Forest": {
+        "roc_auc": 0.958,
+        "brier": 0.2799
+      },
+      "XGBoost": {
+        "roc_auc": 0.9333,
+        "brier": 0.4907
+      },
+      "LightGBM": {
+        "roc_auc": 0.9627,
+        "brier": 0.4909
+      }
+    },
+    "Assam": {
+      "Random Forest": {
+        "roc_auc": 0.7465,
+        "brier": 0.391
+      },
+      "XGBoost": {
+        "roc_auc": 0.5985,
+        "brier": 0.4854
+      },
+      "LightGBM": {
+        "roc_auc": 0.6067,
+        "brier": 0.4865
+      }
+    },
+    "Manipur": {
+      "Random Forest": {
+        "roc_auc": 0.8858,
+        "brier": 0.2833
+      },
+      "XGBoost": {
+        "roc_auc": 0.8,
+        "brier": 0.4782
+      },
+      "LightGBM": {
+        "roc_auc": 0.8156,
+        "brier": 0.479
+      }
+    },
+    "Meghalaya": {
+      "Random Forest": {
+        "roc_auc": 0.871,
+        "brier": 0.3398
+      },
+      "XGBoost": {
+        "roc_auc": 0.773,
+        "brier": 0.4927
+      },
+      "LightGBM": {
+        "roc_auc": 0.836,
+        "brier": 0.4933
+      }
+    },
+    "Mizoram": {
+      "Random Forest": {
+        "roc_auc": 0.9227,
+        "brier": 0.277
+      },
+      "XGBoost": {
+        "roc_auc": 0.8893,
+        "brier": 0.489
+      },
+      "LightGBM": {
+        "roc_auc": 0.894,
+        "brier": 0.4891
+      }
+    },
+    "Nagaland": {
+      "Random Forest": {
+        "roc_auc": 0.9371,
+        "brier": 0.2886
+      },
+      "XGBoost": {
+        "roc_auc": 0.8924,
+        "brier": 0.492
+      },
+      "LightGBM": {
+        "roc_auc": 0.9068,
+        "brier": 0.4929
+      }
+    },
+    "Sikkim": {
+      "Random Forest": {
+        "roc_auc": 0.9875,
+        "brier": 0.2357
+      },
+      "XGBoost": {
+        "roc_auc": 0.9747,
+        "brier": 0.4987
+      },
+      "LightGBM": {
+        "roc_auc": 0.9933,
+        "brier": 0.499
+      }
+    },
+    "Tripura": {
+      "Random Forest": {
+        "roc_auc": 0.6768,
+        "brier": 0.3921
+      },
+      "XGBoost": {
+        "roc_auc": 0.5299,
+        "brier": 0.4916
+      },
+      "LightGBM": {
+        "roc_auc": 0.5158,
+        "brier": 0.4971
+      }
+    }
+  }
+}

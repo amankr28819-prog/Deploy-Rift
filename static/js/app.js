@@ -53,8 +53,14 @@ document.addEventListener("DOMContentLoaded", () => {
   // Setup Satellite Slider
   initSatelliteSlider();
 
-  // Setup Demo Engine Button
-  document.getElementById("btnRunDemo").addEventListener("click", runDemoScenarioStep);
+  // Setup Provenance Registry
+  initProvenanceRegistry();
+
+  // Setup Demo Engine Button (if present)
+  const btnRunDemo = document.getElementById("btnRunDemo");
+  if (btnRunDemo) {
+    btnRunDemo.addEventListener("click", runDemoScenarioStep);
+  }
 
   // Register PWA Service Worker for Offline Field Support
   initServiceWorker();
@@ -132,18 +138,47 @@ async function fetchInitialData() {
 }
 
 /* -------------------------------------------------------------
- * GIS LEAFLET MAP ENGINE
+ * GIS LEAFLET MAP ENGINE - REAL BASEMAPS & DISTRICT AI RISK
  * ------------------------------------------------------------- */
+let gisDistrictGeoJsonLayer = null;
+let currentDistrictRiskData = null;
+let currentBasemapTileLayer = null;
+let activeBasemapKey = "street";
+
+const GIS_BASEMAP_PROVIDERS = {
+  street: {
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    options: {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
+    }
+  },
+  satellite: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    options: {
+      maxZoom: 18,
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and GIS Community'
+    }
+  },
+  terrain: {
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+    options: {
+      maxZoom: 18,
+      attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey'
+    }
+  }
+};
+
 function initGisMap() {
-  const mapCenter = [25.5788, 92.5]; // NER Regional Center
+  const mapCenter = [26.15, 93.0]; // North-East India Center
   
-  // 1. Dashboard Mini GIS Map
+  // 1. Dashboard Mini GIS Map (Replaced broken CartoDB with clean OpenStreetMap)
   const mapElement = document.getElementById("gisMap");
   if (mapElement && !gisMap) {
-    gisMap = L.map("gisMap").setView(mapCenter, 7);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    gisMap = L.map("gisMap").setView([25.5788, 92.5], 7);
+    L.tileLayer(GIS_BASEMAP_PROVIDERS.street.url, {
       maxZoom: 18,
-      attribution: '&copy; CartoDB &copy; OpenStreetMap'
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
     }).addTo(gisMap);
 
     renderMapMarkers(gisMap, locationsData);
@@ -156,28 +191,532 @@ function initGisMap() {
   // 2. Full Screen GIS Risk Map View
   const fullMapElement = document.getElementById("fullGisMap");
   if (fullMapElement && !fullGisMap) {
-    fullGisMap = L.map("fullGisMap").setView(mapCenter, 7);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    fullGisMap = L.map("fullGisMap", {
+      center: mapCenter,
+      zoom: 7,
+      minZoom: 6,
       maxZoom: 18,
-      attribution: '&copy; CartoDB &copy; OpenStreetMap'
-    }).addTo(fullGisMap);
+      maxBounds: [[20.0, 87.0], [31.0, 99.0]],
+      maxBoundsViscosity: 0.8
+    });
 
-    renderMapMarkers(fullGisMap, locationsData);
+    // Default to OpenStreetMap Standard basemap
+    currentBasemapTileLayer = L.tileLayer(
+      GIS_BASEMAP_PROVIDERS.street.url, 
+      GIS_BASEMAP_PROVIDERS.street.options
+    ).addTo(fullGisMap);
 
-    // State Filter Change
-    document.getElementById("gisStateFilter").addEventListener("change", (e) => {
-      const state = e.target.value;
-      if (state === "ALL") {
-        fullGisMap.setView(mapCenter, 7);
-      } else {
-        const filtered = locationsData.filter(l => l.state === state);
-        if (filtered.length > 0) {
-          fullGisMap.setView([filtered[0].lat, filtered[0].lng], 9);
+    // Setup Basemap switchers, state filter, and refresh controls
+    initFullGisMapControls();
+
+    // Fetch and render initial 78 district risk polygons
+    fetchDistrictRiskData(false);
+  }
+}
+
+function initFullGisMapControls() {
+  // Layer switch buttons
+  const streetBtn = document.getElementById("gisBtnStreet");
+  const satBtn = document.getElementById("gisBtnSatellite");
+  const terrainBtn = document.getElementById("gisBtnTerrain");
+
+  if (streetBtn) {
+    streetBtn.addEventListener("click", () => switchBasemapLayer("street"));
+  }
+  if (satBtn) {
+    satBtn.addEventListener("click", () => switchBasemapLayer("satellite"));
+  }
+  if (terrainBtn) {
+    terrainBtn.addEventListener("click", () => switchBasemapLayer("terrain"));
+  }
+
+  // State Filter Change
+  const stateFilter = document.getElementById("gisStateFilter");
+  if (stateFilter) {
+    stateFilter.addEventListener("change", (e) => {
+      const selectedState = e.target.value;
+      if (currentDistrictRiskData) {
+        renderDistrictRiskPolygons(currentDistrictRiskData, selectedState);
+      }
+    });
+  }
+
+  // Refresh Button
+  const refreshBtn = document.getElementById("gisBtnRefresh");
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", () => {
+      fetchDistrictRiskData(true);
+    });
+  }
+
+  // Leaflet Popup open listener: disable click propagation and guarantee click responsiveness
+  if (fullGisMap) {
+    fullGisMap.on("popupopen", (e) => {
+      const popupEl = e.popup.getElement();
+      if (popupEl) {
+        const btn = popupEl.querySelector(".gis-popup-btn");
+        if (btn) {
+          L.DomEvent.disableClickPropagation(btn);
+          btn.addEventListener("click", (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            const dName = btn.getAttribute("data-district");
+            if (dName) {
+              window.openDistrictFullDetails(dName);
+            }
+          });
+        }
+        if (window.lucide) {
+          window.lucide.createIcons();
         }
       }
     });
   }
+
+  // District Details Modal Back / Close button listeners
+  const btnBack = document.getElementById("btnBackFromDistrictModal");
+  if (btnBack) {
+    btnBack.addEventListener("click", window.closeDistrictFullDetails);
+  }
+
+  const btnClose = document.getElementById("btnCloseDistrictModal");
+  if (btnClose) {
+    btnClose.addEventListener("click", window.closeDistrictFullDetails);
+  }
+
+  const btnFooter = document.getElementById("btnReturnToMapFooter");
+  if (btnFooter) {
+    btnFooter.addEventListener("click", window.closeDistrictFullDetails);
+  }
+
+  const modalOverlay = document.getElementById("districtDetailsModal");
+  if (modalOverlay) {
+    modalOverlay.addEventListener("click", (e) => {
+      if (e.target === modalOverlay) {
+        window.closeDistrictFullDetails();
+      }
+    });
+  }
+
+  // Keyboard Escape listener to return to map
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      window.closeDistrictFullDetails();
+    }
+  });
 }
+
+function switchBasemapLayer(layerKey) {
+  if (!GIS_BASEMAP_PROVIDERS[layerKey] || !fullGisMap) return;
+  if (layerKey === activeBasemapKey) return;
+
+  activeBasemapKey = layerKey;
+
+  // Update button active state
+  document.querySelectorAll(".gis-layer-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.layer === layerKey);
+  });
+
+  // Switch Leaflet tile layer smoothly
+  if (currentBasemapTileLayer) {
+    fullGisMap.removeLayer(currentBasemapTileLayer);
+  }
+
+  const provider = GIS_BASEMAP_PROVIDERS[layerKey];
+  currentBasemapTileLayer = L.tileLayer(provider.url, provider.options).addTo(fullGisMap);
+
+  // Keep district polygons on top
+  if (gisDistrictGeoJsonLayer) {
+    gisDistrictGeoJsonLayer.bringToFront();
+  }
+}
+
+async function fetchDistrictRiskData(forceRefresh = false) {
+  const refreshIcon = document.getElementById("gisRefreshIcon");
+  if (refreshIcon) refreshIcon.classList.add("spin");
+
+  try {
+    const url = `/api/gis/risk-districts?state=all${forceRefresh ? '&refresh=true' : ''}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+    }
+    const data = await response.json();
+    currentDistrictRiskData = data;
+
+    // Update metadata headers
+    const countText = document.getElementById("gisDistrictsCountText");
+    if (countText && data.features) {
+      countText.textContent = `${data.features.length} Districts`;
+    }
+
+    const modelBadge = document.getElementById("gisModelBadgeText");
+    if (modelBadge && data.metadata) {
+      modelBadge.textContent = `Model: ${data.metadata.hazard_model_version || data.metadata.model_version || "RIFT V2"}`;
+    }
+
+    const legendModel = document.getElementById("gisLegendModelVer");
+    if (legendModel && data.metadata) {
+      legendModel.textContent = data.metadata.model_version || "rift_landslide_model_v2";
+    }
+
+    const legendUpdated = document.getElementById("gisLegendUpdated");
+    if (legendUpdated && data.metadata && data.metadata.updated_at) {
+      try {
+        const d = new Date(data.metadata.updated_at);
+        legendUpdated.textContent = `Updated: ${d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+      } catch (e) {
+        legendUpdated.textContent = "Updated: Just now";
+      }
+    }
+
+    // Render features with current state filter
+    const currentState = document.getElementById("gisStateFilter")?.value || "ALL";
+    renderDistrictRiskPolygons(data, currentState);
+
+    console.log(`[RIFT GIS] Loaded ${data.features ? data.features.length : 0} district risk boundaries successfully.`);
+  } catch (err) {
+    console.error("[RIFT GIS] Error fetching district risk data:", err);
+  } finally {
+    if (refreshIcon) {
+      setTimeout(() => refreshIcon.classList.remove("spin"), 500);
+    }
+  }
+}
+
+function renderDistrictRiskPolygons(geoJsonData, stateFilter = "ALL") {
+  if (!fullGisMap || !geoJsonData) return;
+
+  // Remove existing GeoJSON layer
+  if (gisDistrictGeoJsonLayer) {
+    fullGisMap.removeLayer(gisDistrictGeoJsonLayer);
+    gisDistrictGeoJsonLayer = null;
+  }
+
+  gisDistrictGeoJsonLayer = L.geoJSON(geoJsonData, {
+    filter: (feature) => {
+      if (!stateFilter || stateFilter === "ALL") return true;
+      return (feature.properties?.state || "").toLowerCase() === stateFilter.toLowerCase();
+    },
+    style: (feature) => {
+      const color = feature.properties?.risk_color || "#94a3b8";
+      return {
+        fillColor: color,
+        weight: 1.5,
+        opacity: 0.9,
+        color: "#ffffff",
+        dashArray: "",
+        fillOpacity: 0.65
+      };
+    },
+    onEachFeature: (feature, layer) => {
+      const props = feature.properties || {};
+
+      // Hover tooltip
+      const scoreStr = props.hazard_score != null ? `${props.hazard_score.toFixed(1)}%` : "N/A";
+      layer.bindTooltip(`
+        <div style="font-family: 'Inter', sans-serif; font-size: 11px; padding: 2px;">
+          <b>${props.district}</b> (${props.state})<br>
+          <span style="color: ${props.risk_color}; font-weight: 700;">
+            ${props.risk_category} (${scoreStr})
+          </span>
+        </div>
+      `, { sticky: true, opacity: 0.95 });
+
+      // Click popup
+      const popupHtml = buildDistrictPopupHtml(props);
+      layer.bindPopup(popupHtml, { maxWidth: 280 });
+
+      // Interaction listeners
+      layer.on({
+        mouseover: (e) => {
+          const target = e.target;
+          target.setStyle({
+            weight: 3,
+            color: "#ffffff",
+            fillOpacity: 0.85
+          });
+          if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+            target.bringToFront();
+          }
+        },
+        mouseout: (e) => {
+          if (gisDistrictGeoJsonLayer) {
+            gisDistrictGeoJsonLayer.resetStyle(e.target);
+          }
+        },
+        click: (e) => {
+          displayDistrictDetails(props);
+          fullGisMap.fitBounds(e.target.getBounds(), { maxZoom: 9, padding: [30, 30] });
+        }
+      });
+    }
+  }).addTo(fullGisMap);
+
+  // Auto-fit bounds
+  if (stateFilter !== "ALL") {
+    const bounds = gisDistrictGeoJsonLayer.getBounds();
+    if (bounds.isValid()) {
+      fullGisMap.fitBounds(bounds, { padding: [30, 30] });
+    }
+  } else {
+    fullGisMap.setView([26.15, 93.0], 7);
+  }
+}
+
+function buildDistrictPopupHtml(props) {
+  const factors = props.factors || {};
+  const gsiCount = factors.historical_landslides_10km != null ? `${factors.historical_landslides_10km} recorded` : "0";
+  const elev = factors.elevation_m != null ? `${Math.round(factors.elevation_m)} m` : "Unavailable";
+  const slope = factors.slope_deg != null ? `${factors.slope_deg.toFixed(1)}°` : "Unavailable";
+  const rain = factors.annual_rainfall_mm != null ? `${Math.round(factors.annual_rainfall_mm)} mm` : "Unavailable";
+  const soil = factors.soil_moisture_pct != null ? `${factors.soil_moisture_pct.toFixed(1)}%` : "Unavailable";
+  const scoreStr = props.hazard_score != null ? `${props.hazard_score.toFixed(1)}%` : "Unavailable";
+  const safeDistrictName = (props.district || "").replace(/'/g, "\\'");
+
+  return `
+    <div class="gis-popup-container">
+      <div class="gis-popup-header">
+        <div>
+          <div class="gis-popup-title">${props.district} District</div>
+          <div class="gis-popup-state">${props.state}, India</div>
+        </div>
+        <span class="gis-popup-badge" style="background: ${props.risk_color};">
+          ${props.risk_category}
+        </span>
+      </div>
+      <div class="gis-popup-body">
+        <div style="font-size: 10px; color: #94a3b8; margin-bottom: 4px;">
+          <b>Assessment:</b> ${props.assessment_type || "District representative-point assessment"}
+        </div>
+        <div style="font-size: 11px; margin-bottom: 6px;">
+          <b>Hazard Score:</b> <span style="font-weight: 700; color: ${props.risk_color};">${scoreStr}</span>
+        </div>
+        <div style="font-size: 10px; color: #e2e8f0; line-height: 1.3; background: rgba(255,255,255,0.06); padding: 6px; border-radius: 4px; margin-bottom: 6px;">
+          ${props.explanation || "Risk evaluated using physical environmental factors."}
+        </div>
+        <div class="gis-popup-factors">
+          <div>⛰️ Elev: <b>${elev}</b></div>
+          <div>📐 Slope: <b>${slope}</b></div>
+          <div>🌧️ Rain: <b>${rain}</b></div>
+          <div>💧 Soil: <b>${soil}</b></div>
+          <div>⚠️ GSI (10km): <b>${gsiCount}</b></div>
+          <div>🏛️ Road: <i style="color:#94a3b8">Unavailable</i></div>
+        </div>
+        <button type="button" class="gis-popup-btn" data-district="${safeDistrictName}" onclick="window.openDistrictFullDetails('${safeDistrictName}')">
+          <i data-lucide="external-link" style="width: 12px; height: 12px;"></i>
+          <span>INSPECT FULL DETAILS &rsaquo;</span>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function displayDistrictDetails(props) {
+  if (!props) return;
+
+  const emptyState = document.getElementById("gisEmptyState");
+  const detailsContent = document.getElementById("gisDetailsContent");
+
+  if (emptyState) emptyState.style.display = "none";
+  if (detailsContent) detailsContent.style.display = "flex";
+
+  // Header
+  const distEl = document.getElementById("gisDetailDistrict");
+  if (distEl) distEl.textContent = `${props.district} District`;
+
+  const stateEl = document.getElementById("gisDetailState");
+  if (stateEl) stateEl.textContent = `${props.state}, Northeast India`;
+
+  const badgeEl = document.getElementById("gisDetailRiskBadge");
+  if (badgeEl) {
+    badgeEl.textContent = props.risk_category || "UNKNOWN";
+    badgeEl.style.background = props.risk_color || "#94a3b8";
+    badgeEl.style.color = "#ffffff";
+  }
+
+  // Score & methodology
+  const scoreEl = document.getElementById("gisDetailHazardScore");
+  if (scoreEl) {
+    scoreEl.textContent = props.hazard_score != null ? `${props.hazard_score.toFixed(1)}%` : "Unavailable";
+    scoreEl.style.color = props.risk_color || "var(--text-primary)";
+  }
+
+  const methodEl = document.getElementById("gisDetailAssessmentType");
+  if (methodEl) {
+    methodEl.textContent = props.assessment_type || "District representative-point assessment";
+  }
+
+  // Explanation
+  const expColor = document.getElementById("gisExpRiskColor");
+  if (expColor) {
+    expColor.textContent = props.risk_category || "ASSESSED";
+    expColor.style.color = props.risk_color || "inherit";
+  }
+
+  const expText = document.getElementById("gisDetailExplanation");
+  if (expText) {
+    expText.textContent = props.explanation || "Baseline profile evaluated using regional physical terrain and meteorological inputs.";
+  }
+
+  // Factors Grid
+  const f = props.factors || {};
+  const setFactor = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val != null ? val : "Unavailable";
+  };
+
+  setFactor("gisFactorElevation", f.elevation_m != null ? `${Math.round(f.elevation_m)} m` : "Unavailable");
+  setFactor("gisFactorSlope", f.slope_deg != null ? `${f.slope_deg.toFixed(1)}°` : "Unavailable");
+  setFactor("gisFactorRainfall", f.annual_rainfall_mm != null ? `${Math.round(f.annual_rainfall_mm)} mm` : "Unavailable");
+  setFactor("gisFactorSoil", f.soil_moisture_pct != null ? `${f.soil_moisture_pct.toFixed(1)}%` : "Unavailable");
+  setFactor("gisFactorNdvi", f.ndvi != null ? `${f.ndvi.toFixed(2)}` : "Unavailable");
+  
+  let lcText = "Unavailable";
+  if (f.landcover_class === 10) lcText = "Tree Cover (Class 10)";
+  else if (f.landcover_class === 40) lcText = "Cropland (Class 40)";
+  else if (f.landcover_class === 50) lcText = "Built-up (Class 50)";
+  else if (f.landcover_class === 20) lcText = "Shrubland (Class 20)";
+  setFactor("gisFactorLandcover", lcText);
+
+  setFactor("gisFactorGsi", f.historical_landslides_10km != null ? `${f.historical_landslides_10km} GSI records` : "0 recorded");
+  setFactor("gisFactorSeismic", f.seismic_status || "Regional Seismic Zone V (Active Himalayan Belt)");
+
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+}
+
+window.openDistrictFullDetails = function(districtName) {
+  if (!currentDistrictRiskData || !currentDistrictRiskData.features) return;
+  const match = currentDistrictRiskData.features.find(
+    f => (f.properties?.district || "").toLowerCase() === (districtName || "").toLowerCase()
+  );
+  if (!match) {
+    console.warn(`[RIFT GIS] District '${districtName}' not found in current dataset.`);
+    return;
+  }
+  const props = match.properties;
+
+  // 1. Update side panel inspector as well
+  displayDistrictDetails(props);
+
+  // 2. Populate Full Details Modal
+  const modal = document.getElementById("districtDetailsModal");
+  if (!modal) return;
+
+  // Title & state
+  const titleEl = document.getElementById("modalDistrictTitle");
+  if (titleEl) titleEl.textContent = `${props.district} District`;
+
+  const stateEl = document.getElementById("modalDistrictState");
+  if (stateEl) stateEl.textContent = `${props.state}, Northeast India`;
+
+  // Risk badge & score
+  const badgeEl = document.getElementById("modalDistrictRiskBadge");
+  if (badgeEl) {
+    badgeEl.textContent = props.risk_category || "UNKNOWN";
+    badgeEl.style.background = props.risk_color || "#94a3b8";
+    badgeEl.style.color = "#ffffff";
+  }
+
+  const scoreEl = document.getElementById("modalHazardScore");
+  if (scoreEl) {
+    scoreEl.textContent = props.hazard_score != null ? `${props.hazard_score.toFixed(1)}%` : "Unavailable";
+    scoreEl.style.color = props.risk_color || "var(--text-primary)";
+  }
+
+  // Methodology & metadata
+  const methodEl = document.getElementById("modalAssessmentType");
+  if (methodEl) methodEl.textContent = props.assessment_type || "District representative-point assessment";
+
+  const modelEl = document.getElementById("modalModelVersion");
+  if (modelEl) modelEl.textContent = props.model_version || "rift_landslide_model_v2";
+
+  const threshEl = document.getElementById("modalDecisionThreshold");
+  if (threshEl) threshEl.textContent = props.decision_threshold ? `Threshold: ${(props.decision_threshold * 100).toFixed(1)}%` : "Threshold: 20.0%";
+
+  const coordsEl = document.getElementById("modalCoordinates");
+  if (coordsEl) {
+    const c = props.representative_coordinates;
+    if (c && c.lat != null && c.lon != null) {
+      coordsEl.textContent = `${c.lat.toFixed(4)}° N, ${c.lon.toFixed(4)}° E`;
+    } else {
+      coordsEl.textContent = "Representative Centroid";
+    }
+  }
+
+  const timeEl = document.getElementById("modalTimestamp");
+  if (timeEl) {
+    try {
+      const d = new Date(props.assessment_timestamp);
+      timeEl.textContent = `Assessed: ${d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}, ${d.toLocaleDateString()}`;
+    } catch (e) {
+      timeEl.textContent = "Current Session Assessment";
+    }
+  }
+
+  // Explanation
+  const expEl = document.getElementById("modalExplanation");
+  if (expEl) expEl.textContent = props.explanation || "Risk evaluated using physical environmental factors.";
+
+  // Environmental & physical factors
+  const f = props.factors || {};
+  const setModalFactor = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val != null ? val : "Unavailable";
+  };
+
+  setModalFactor("modalElevation", f.elevation_m != null ? `${Math.round(f.elevation_m)} m` : "Unavailable");
+  setModalFactor("modalSlope", f.slope_deg != null ? `${f.slope_deg.toFixed(1)}°` : "Unavailable");
+  setModalFactor("modalRainfall", f.annual_rainfall_mm != null ? `${Math.round(f.annual_rainfall_mm)} mm` : "Unavailable");
+  setModalFactor("modalSoil", f.soil_moisture_pct != null ? `${f.soil_moisture_pct.toFixed(1)}%` : "Unavailable");
+  setModalFactor("modalNdvi", f.ndvi != null ? `${f.ndvi.toFixed(2)}` : "Unavailable");
+
+  let lcText = "Unavailable";
+  if (f.landcover_class === 10) lcText = "Tree Cover (Class 10)";
+  else if (f.landcover_class === 40) lcText = "Cropland (Class 40)";
+  else if (f.landcover_class === 50) lcText = "Built-up (Class 50)";
+  else if (f.landcover_class === 20) lcText = "Shrubland (Class 20)";
+  setModalFactor("modalLandcover", lcText);
+
+  setModalFactor("modalGsi", f.historical_landslides_10km != null ? `${f.historical_landslides_10km} GSI records` : "0 recorded");
+  setModalFactor("modalSeismic", f.seismic_status || "Regional Seismic Zone V (Active Himalayan Belt)");
+
+  // Recommended Mitigation Protocol
+  const actionEl = document.getElementById("modalRecommendedAction");
+  if (actionEl) {
+    if (props.risk_category === "VERY HIGH") {
+      actionEl.textContent = "CRITICAL ALERT PROTOCOL: Severe landslide hazard. Maintain continuous monitoring along major transport lifelines and hospital corridors. Inspect slope drainage channels and retaining structures. Restrict vehicular transit along active cut-slopes during intense rainfall.";
+    } else if (props.risk_category === "HIGH") {
+      actionEl.textContent = "HIGH VIGILANCE PROTOCOL: Elevated landslide probability. Inspect drainage outlets and culverts along key arterial corridors. Dispatch early advisories to local communities and position emergency response equipment near vulnerable slope segments.";
+    } else if (props.risk_category === "MODERATE") {
+      actionEl.textContent = "MODERATE WATCH PROTOCOL: Moderate slope failure vulnerability. Monitor localized rainfall forecasts and maintain readiness for soil saturation warnings.";
+    } else {
+      actionEl.textContent = "LOW HAZARD BASELINE: Standard baseline stability under current precipitation profile. Maintain scheduled routine environmental inspection.";
+    }
+  }
+
+  // Display modal
+  modal.style.display = "flex";
+  modal.classList.add("active");
+  document.body.style.overflow = "hidden";
+
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+};
+
+window.closeDistrictFullDetails = function() {
+  const modal = document.getElementById("districtDetailsModal");
+  if (modal) {
+    modal.classList.remove("active");
+    modal.style.display = "none";
+  }
+  document.body.style.overflow = "";
+};
+
+window.inspectDistrictFromPopup = window.openDistrictFullDetails;
 
 function renderMapMarkers(mapInstance, locations) {
   locations.forEach(loc => {
@@ -1949,7 +2488,13 @@ function renderWeatherMetrics(data) {
   if (condEl) condEl.textContent = cur.weather_condition || "Clear sky";
   if (wmoEl) wmoEl.textContent = `WMO Code: ${cur.weather_code ?? '--'}`;
 
-  // Timestamp
+  // Source Provenance Badge & Timestamp
+  const sourceLabel = document.getElementById("weatherDataSourceLabel");
+  const meta = data.metadata || {};
+  if (sourceLabel) {
+    sourceLabel.textContent = `Source: ${meta.rainfall_data_source || 'Open-Meteo Reanalysis'} (${meta.current_weather_source || 'Forecast API'})`;
+  }
+
   const timeEl = document.getElementById("weatherLastUpdated");
   if (timeEl) timeEl.textContent = `Updated: ${cur.updated_at || 'Just now'}`;
 
@@ -1997,7 +2542,7 @@ function renderWeatherDailyTable(data) {
       classification = "Very Heavy Rain";
     } else if (rain >= 64.5) {
       badgeClass = "badge-heavy-rain";
-      classification = "Heavy Rain (IMD)";
+      classification = "Heavy Rain (IMD Benchmark)";
     } else if (rain >= 15.6) {
       badgeClass = "badge-moderate-rain";
       classification = "Moderate Rain";
@@ -2110,10 +2655,11 @@ function renderWeatherTrendChart(data) {
               if (context.dataset.type === "line") {
                 return ` Trend: ${val} mm`;
               }
-              let rating = "Dry";
-              if (val >= 64.5) rating = "Heavy Rain (IMD)";
-              else if (val >= 15.6) rating = "Moderate Rain";
-              else if (val >= 2.5) rating = "Rainy Day";
+              let rating = "Dry (<2.5mm)";
+              if (val >= 115.5) rating = "Very Heavy (IMD Benchmark >=115.5mm)";
+              else if (val >= 64.5) rating = "Heavy Rain (IMD Benchmark >=64.5mm)";
+              else if (val >= 15.6) rating = "Moderate Rain (IMD Benchmark)";
+              else if (val >= 2.5) rating = "Rainy Day (IMD Benchmark >=2.5mm)";
               return ` Rainfall: ${val} mm (${rating})`;
             }
           }
@@ -2169,13 +2715,15 @@ function renderWeatherComparisonChart(data) {
   const textColor = isLight ? "#475569" : "#94a3b8";
 
   const labels = comparison.map(c => c.district);
-  const values = comparison.map(c => c.total_7d_mm);
+  const values = comparison.map(c => (c.total_7d_mm !== null && c.total_7d_mm !== undefined) ? c.total_7d_mm : 0);
 
   // Highlight active district
   const backgroundColors = comparison.map(c => 
-    c.district.toLowerCase() === currentWeatherDistrict.toLowerCase() 
-      ? (isLight ? "#0284c7" : "#38bdf8") 
-      : (isLight ? "rgba(148, 163, 184, 0.4)" : "rgba(51, 65, 85, 0.6)")
+    c.available === false
+      ? (isLight ? "rgba(203, 213, 225, 0.4)" : "rgba(30, 41, 59, 0.6)")
+      : (c.district.toLowerCase() === currentWeatherDistrict.toLowerCase() 
+          ? (isLight ? "#0284c7" : "#38bdf8") 
+          : (isLight ? "rgba(148, 163, 184, 0.4)" : "rgba(51, 65, 85, 0.6)"))
   );
 
   if (weatherComparisonChartInstance) {
@@ -2203,7 +2751,13 @@ function renderWeatherComparisonChart(data) {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: (ctx) => ` 7-Day Rainfall: ${ctx.parsed.y} mm`
+            label: (ctx) => {
+              const item = comparison[ctx.dataIndex];
+              if (item && item.available === false) {
+                return ` 7-Day Rainfall: Data Unavailable`;
+              }
+              return ` 7-Day Rainfall: ${ctx.parsed.y} mm (Open-Meteo Reanalysis)`;
+            }
           }
         }
       },
@@ -2229,4 +2783,65 @@ function renderWeatherComparisonChart(data) {
       }
     }
   });
+}
+
+/* -------------------------------------------------------------
+ * DATA TRANSPARENCY & PROVENANCE REGISTRY VIEWER
+ * ------------------------------------------------------------- */
+function initProvenanceRegistry() {
+  const container = document.getElementById("provenanceSourcesContainer");
+  if (!container) return;
+
+  fetch("/api/provenance/sources")
+    .then(r => r.json())
+    .then(data => {
+      if (!data || !data.sources) {
+        container.innerHTML = `<div style="color: var(--text-muted);">Provenance data temporarily unavailable.</div>`;
+        return;
+      }
+
+      const sources = data.sources;
+      const html = Object.keys(sources).map(key => {
+        const src = sources[key];
+        const isOfficial = !src.source_id.includes("demo");
+        const badgeColor = isOfficial ? "var(--risk-low)" : "var(--risk-critical)";
+        const badgeBg = isOfficial ? "rgba(34, 197, 94, 0.12)" : "rgba(239, 68, 68, 0.12)";
+
+        return `
+          <div class="card-inner-box" style="padding: 16px; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--border-color);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+              <div style="font-weight: 700; font-size: 14px; color: var(--text-primary);">${src.name}</div>
+              <span style="font-size: 10px; padding: 2px 6px; border-radius: 4px; background: ${badgeBg}; color: ${badgeColor}; font-weight: 700; text-transform: uppercase;">
+                ${src.data_type.split("/")[0].trim()}
+              </span>
+            </div>
+            
+            <div style="font-size: 11px; color: var(--text-secondary);">
+              <b>Dataset:</b> ${src.dataset}
+            </div>
+
+            <div style="font-size: 11px; color: var(--text-muted); line-height: 1.4;">
+              ${src.description}
+            </div>
+
+            <div style="margin-top: auto; padding-top: 8px; border-top: 1px solid var(--border-color); font-size: 11px; display: flex; justify-content: space-between; align-items: center;">
+              <span style="color: var(--text-secondary); font-size: 10px;">${src.license}</span>
+              ${src.url && src.url.startsWith("http") ? `
+                <a href="${src.url}" target="_blank" rel="noopener noreferrer" style="color: var(--text-accent); text-decoration: none; font-weight: 600; font-size: 11px;">
+                  Official Portal ↗
+                </a>
+              ` : `
+                <span style="color: var(--text-muted); font-size: 10px;">Internal Endpoint</span>
+              `}
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      container.innerHTML = html;
+    })
+    .catch(err => {
+      console.error("[Provenance] Error loading sources:", err);
+      container.innerHTML = `<div style="color: var(--risk-critical);">Failed to load verified data provenance catalog.</div>`;
+    });
 }

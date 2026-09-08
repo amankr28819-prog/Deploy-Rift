@@ -86,8 +86,8 @@ class _GisMapViewState extends State<GisMapView> {
             ),
             children: [
               TileLayer(
-                urlTemplate: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-                subdomains: const ['a', 'b', 'c', 'd'],
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'org.mdoner.ner_safe',
               ),
               MarkerLayer(
                 markers: displayedLocations.map((loc) {

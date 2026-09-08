@@ -1,0 +1,51 @@
+{
+  "model_name": "RIFT Physical Landslide Hazard Intelligence Model",
+  "version": "rift_landslide_model_v2",
+  "framework": "scikit-learn / xgboost / lightgbm",
+  "selected_algorithm": "Random Forest",
+  "target": "landslide_occurred (0: Non-Landslide / Stable Ground, 1: Landslide Occurrence)",
+  "training_date": "2026-09-08 06:09:44 UTC",
+  "training_samples": 20383,
+  "decision_threshold": 0.2,
+  "input_features": [
+    "slope_deg",
+    "slope_gradient",
+    "elevation_m",
+    "aspect_sin",
+    "aspect_cos",
+    "annual_rainfall_mm",
+    "soil_moisture_source_value",
+    "NDVI",
+    "vegetation_protection_ratio",
+    "rainfall_slope_interaction",
+    "soil_moisture_slope_interaction",
+    "landcover_class",
+    "distance_to_urban_center_km",
+    "dist_to_nearest_landslide_km",
+    "historical_landslide_density_10km"
+  ],
+  "geographic_memorization_importance": 0.0,
+  "physical_factor_importance": 100.0,
+  "validation_method": "5-Fold Spatial GroupKFold by District + Leave-One-State-Out",
+  "key_metrics": {
+    "spatial_roc_auc": 0.9435,
+    "spatial_pr_auc": 0.9511,
+    "spatial_f1": 0.7583,
+    "spatial_accuracy": 0.8089,
+    "spatial_precision": 0.9977,
+    "spatial_recall": 0.6116,
+    "spatial_brier_score": 0.2838
+  },
+  "limitations": [
+    "Model predicts long-term and seasonal landslide susceptibility, not instantaneous real-time failure seconds before collapse.",
+    "Accuracy depends on the precision of input digital elevation models (DEM) and rainfall estimates.",
+    "Vegetation protection ratio uses optical NDVI which may exhibit saturation in dense cloud-covered monsoon periods."
+  ],
+  "data_sources": [
+    "Geological Survey of India (GSI) National Landslide Susceptibility Mapping (NLSM) Inventory",
+    "Copernicus GLO-90 Digital Elevation Model",
+    "Sentinel-2 10m Normalized Difference Vegetation Index (NDVI)",
+    "Open-Meteo Reanalysis & Climatological Precipitation",
+    "OpenStreetMap Infrastructure Network"
+  ]
+}

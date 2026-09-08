@@ -11,6 +11,7 @@ import datetime
 import urllib.request
 import urllib.parse
 from typing import Dict, Any, Optional
+from backend.source_registry import build_provenance, get_source
 
 # In-memory spatial cache: key = (round(lat, 3), round(lon, 3)), value = (timestamp, data)
 FACTOR_CACHE: Dict[tuple, tuple[float, Dict[str, Any]]] = {}
@@ -259,6 +260,8 @@ def get_location_landslide_factors(lat: float, lon: float) -> Dict[str, Any]:
         "latitude": round(lat, 6),
         "longitude": round(lon, 6),
         "source": "Browser Geolocation API (HTML5 W3C)",
+        "source_url": "https://developer.mozilla.org/en-US/docs/Web/API/Geolocation_API",
+        "data_type": "Observed / Live GPS",
         "status": "Live GPS Fix"
     }
 
@@ -268,6 +271,8 @@ def get_location_landslide_factors(lat: float, lon: float) -> Dict[str, Any]:
         "elevation_m": elevation_val,
         "elevation_source": "Copernicus GLO-90 DEM / Open-Meteo" if elevation_val is not None else "Unavailable",
         "elevation_status": "Derived / DEM" if elevation_val is not None else "Unavailable",
+        "source_url": "https://spacedata.copernicus.eu/collections/copernicus-digital-elevation-model",
+        "data_type": "DEM-Derived Topography",
         "slope_deg": None,
         "aspect": None,
         "curvature": None,
@@ -291,6 +296,8 @@ def get_location_landslide_factors(lat: float, lon: float) -> Dict[str, Any]:
             "soil_moisture_m3_m3": meteo_data.get("soil_moisture_m3_m3"),
             "soil_moisture_depths": meteo_data.get("soil_moisture_depths"),
             "source": "Open-Meteo Weather API",
+            "source_url": "https://open-meteo.com/en/docs",
+            "data_type": "Observed / Forecast",
             "status": "Live / Recent",
             "available": True
         }
@@ -305,6 +312,8 @@ def get_location_landslide_factors(lat: float, lon: float) -> Dict[str, Any]:
             "soil_moisture_m3_m3": None,
             "soil_moisture_depths": None,
             "source": "Open-Meteo Weather API",
+            "source_url": "https://open-meteo.com/en/docs",
+            "data_type": "Observed / Forecast",
             "status": "Temporarily unavailable",
             "available": False,
             "unavailable_reason": f"Weather API error: {meteo_error}"
@@ -321,6 +330,8 @@ def get_location_landslide_factors(lat: float, lon: float) -> Dict[str, Any]:
         "bulk_density": None,
         "organic_carbon": None,
         "source": "Open-Meteo (Moisture) / SoilGrids (Pedological)",
+        "source_url": "https://open-meteo.com/en/docs",
+        "data_type": "Model-derived Soil Saturation",
         "status": "Moisture Live, Pedological Unavailable",
         "unavailable_reason": "Pedological dataset / SoilGrids raster not configured locally"
     }
@@ -332,6 +343,8 @@ def get_location_landslide_factors(lat: float, lon: float) -> Dict[str, Any]:
         "lithology": None,
         "fault_fracture": None,
         "source": "Geological Survey of India (GSI) / SEISAT",
+        "source_url": "https://www.gsi.gov.in/",
+        "data_type": "Geological Survey Vector Dataset (Offline)",
         "status": "Unavailable",
         "unavailable_reason": "Geological Survey of India (GSI) 1:50k vector dataset not configured locally"
     }
@@ -343,6 +356,8 @@ def get_location_landslide_factors(lat: float, lon: float) -> Dict[str, Any]:
         "ndvi": None,
         "builtup_bare_status": None,
         "source": "ESA WorldCover (Reference: 2021)",
+        "source_url": "https://esa-worldcover.org/",
+        "data_type": "Satellite-derived 10m Classification",
         "reference_year": "2021",
         "status": "Unavailable",
         "unavailable_reason": "ESA WorldCover 2021 offline raster not configured locally. Reference product: ESA WorldCover 2021."
@@ -350,8 +365,10 @@ def get_location_landslide_factors(lat: float, lon: float) -> Dict[str, Any]:
 
     # 7. HUMAN / INFRASTRUCTURE
     if osm_data:
-        cat_infrastructure = osm_data
+        cat_infrastructure = dict(osm_data)
         cat_infrastructure["available"] = True
+        cat_infrastructure["source_url"] = "https://www.openstreetmap.org/"
+        cat_infrastructure["data_type"] = "Observed Spatial Vector Query"
     else:
         cat_infrastructure = {
             "distance_to_nearest_road_m": None,
@@ -359,6 +376,8 @@ def get_location_landslide_factors(lat: float, lon: float) -> Dict[str, Any]:
             "distance_to_nearest_river_m": None,
             "nearby_infrastructure": "Temporarily unavailable",
             "source": "OpenStreetMap / Overpass API",
+            "source_url": "https://www.openstreetmap.org/",
+            "data_type": "Observed Spatial Vector Query",
             "status": "Temporarily unavailable",
             "available": False,
             "unavailable_reason": "OpenStreetMap Overpass API request timed out or was temporarily unreachable",
@@ -367,14 +386,18 @@ def get_location_landslide_factors(lat: float, lon: float) -> Dict[str, Any]:
 
     # 8. EARTHQUAKE
     if usgs_data:
-        cat_earthquake = usgs_data
+        cat_earthquake = dict(usgs_data)
         cat_earthquake["available"] = True
+        cat_earthquake["source_url"] = "https://earthquake.usgs.gov/fdsnws/event/1/"
+        cat_earthquake["data_type"] = "Observed Seismic Catalog"
     else:
         cat_earthquake = {
             "detected": False,
             "message": "Earthquake data unavailable",
             "nearest": None,
             "source": "USGS Earthquake Hazards Program",
+            "source_url": "https://earthquake.usgs.gov/fdsnws/event/1/",
+            "data_type": "Observed Seismic Catalog",
             "status": "Temporarily unavailable",
             "available": False,
             "unavailable_reason": f"USGS API error: {usgs_error}"
@@ -387,10 +410,12 @@ def get_location_landslide_factors(lat: float, lon: float) -> Dict[str, Any]:
         "distance_km": None,
         "density": None,
         "trigger": None,
-        "source": "ISRO Landslide Atlas of India / NASA GLC",
+        "source": "Geological Survey of India (GSI) / ISRO Atlas",
+        "source_url": "https://www.gsi.gov.in/webcenter/portal/OCBIS/pageGeoScience/pageNLSM",
+        "data_type": "Historical Landslide Inventory",
         "status": "Historical dataset (Offline/Not configured)",
         "available": False,
-        "unavailable_reason": "ISRO Landslide Atlas of India / NASA GLC dataset not configured locally"
+        "unavailable_reason": "ISRO Landslide Atlas of India / GSI localized query not configured locally"
     }
 
     payload = {
@@ -402,7 +427,8 @@ def get_location_landslide_factors(lat: float, lon: float) -> Dict[str, Any]:
         "land_cover": cat_land_cover,
         "infrastructure": cat_infrastructure,
         "earthquake": cat_earthquake,
-        "historical_landslides": cat_historical
+        "historical_landslides": cat_historical,
+        "provenance": build_provenance("open_meteo_weather", data_type="Multi-Source Spatial Landslide Factors")
     }
 
     # Store in spatial cache

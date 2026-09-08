@@ -1,0 +1,120 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "RIFT Landslide Hazard Model v2 Feature Schema",
+  "model_version": "rift_landslide_model_v2",
+  "description": "Strict physical geomorphological feature requirements for reliable spatial inference.",
+  "input_features": {
+    "slope_deg": {
+      "type": "number",
+      "unit": "degrees",
+      "valid_range": [
+        0.0,
+        90.0
+      ],
+      "description": "Terrain slope angle derived from DEM or field survey.",
+      "required": true
+    },
+    "elevation_m": {
+      "type": "number",
+      "unit": "meters",
+      "valid_range": [
+        0.0,
+        8000.0
+      ],
+      "description": "Elevation above sea level.",
+      "required": true
+    },
+    "aspect_deg": {
+      "type": "number",
+      "unit": "degrees",
+      "valid_range": [
+        0.0,
+        360.0
+      ],
+      "description": "Compass azimuth aspect direction.",
+      "default": 180.0,
+      "required": false
+    },
+    "annual_rainfall_mm": {
+      "type": "number",
+      "unit": "mm",
+      "valid_range": [
+        0.0,
+        12000.0
+      ],
+      "description": "Climatological or 30-year normal annual precipitation.",
+      "required": true
+    },
+    "soil_moisture_source_value": {
+      "type": "number",
+      "unit": "percent / index",
+      "valid_range": [
+        0.0,
+        100.0
+      ],
+      "description": "Volumetric or satellite soil moisture reading.",
+      "default": 30.0,
+      "required": false
+    },
+    "NDVI": {
+      "type": "number",
+      "unit": "normalized index [-1 to 1]",
+      "valid_range": [
+        -1.0,
+        1.0
+      ],
+      "description": "Normalized Difference Vegetation Index from optical satellite imagery.",
+      "default": 0.55,
+      "required": false
+    },
+    "landcover_class": {
+      "type": "integer",
+      "description": "ESA WorldCover class code (e.g., 10=Tree cover, 20=Shrubland, 30=Grassland, 40=Cropland, 50=Built-up).",
+      "default": 10,
+      "required": false
+    },
+    "distance_to_urban_center_km": {
+      "type": "number",
+      "unit": "km",
+      "description": "Distance to nearest reference urban center or major human settlement.",
+      "default": 50.0,
+      "required": false
+    },
+    "Latitude": {
+      "type": "number",
+      "unit": "decimal degrees",
+      "valid_range": [
+        -90.0,
+        90.0
+      ],
+      "description": "Geographic latitude (used strictly for spatial density query, NOT fed to decision trees).",
+      "required": true
+    },
+    "Longitude": {
+      "type": "number",
+      "unit": "decimal degrees",
+      "valid_range": [
+        -180.0,
+        180.0
+      ],
+      "description": "Geographic longitude (used strictly for spatial density query, NOT fed to decision trees).",
+      "required": true
+    }
+  },
+  "engineered_features": {
+    "slope_gradient": "tan(slope_deg * pi / 180)",
+    "aspect_sin": "sin(aspect_deg * pi / 180)",
+    "aspect_cos": "cos(aspect_deg * pi / 180)",
+    "vegetation_protection_ratio": "NDVI / max(0.1, slope_gradient)",
+    "rainfall_slope_interaction": "(annual_rainfall_mm / 1000) * slope_gradient",
+    "soil_moisture_slope_interaction": "(soil_moisture / 10) * slope_gradient",
+    "dist_to_nearest_landslide_km": "Spherical Haversine distance to closest confirmed historical landslide in GSI catalog",
+    "historical_landslide_density_10km": "Count of confirmed historical landslides within 10 km buffer"
+  },
+  "excluded_features": [
+    "District (excluded to prevent administrative memorization)",
+    "State (excluded to prevent regional memorization)",
+    "Material_Involved (excluded to allow predictive assessment prior to slope failure)",
+    "Movement_Type (excluded because failure type is unknown prior to event)"
+  ]
+}

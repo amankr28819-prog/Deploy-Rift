@@ -19,6 +19,7 @@ import pandas as pd
 
 from backend.factor_service import fetch_open_meteo_factors
 from backend.northeast_data import reverse_lookup_northeast_location
+from backend.source_registry import build_provenance
 
 BASE_DIR = Path(__file__).resolve().parent
 MODEL_PATH = BASE_DIR / "models" / "landslide_intelligence_model_v4.pkl"
@@ -511,4 +512,18 @@ def predict_ai_risk(
         "assessment": assessment_safe,
         "factors": factor_display,
         "factor_details": factor_availability,
+        "provenance": build_provenance(
+            source_id="rift_ai_v4",
+            data_type="ML model inference (XGBClassifier pipeline)",
+            status="real" if raw_prob is not None else "unavailable",
+            is_cached=False,
+            is_stale=False,
+            notes=(
+                "Hazard probability produced by RIFT V4 XGBClassifier pipeline "
+                "(landslide_intelligence_model_v4.pkl). "
+                "Environmental inputs sourced from Open-Meteo, Copernicus DEM, ESA WorldCover, GSI Inventory. "
+                "Model accuracy reflects training dataset distribution — "
+                "independent field validation is recommended before operational deployment."
+            ),
+        ),
     }

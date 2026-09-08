@@ -118,11 +118,12 @@ def fetch_comprehensive_weather(lat: float, lon: float, force_refresh: bool = Fa
         "today_rainfall": today_rain,
         "updated_at": formatted_updated,
         "source": "Open-Meteo Weather API",
-        "timezone": "Asia/Kolkata"
+        "source_type": "Latest Available Weather Data",
+        "timezone": "Asia/Kolkata",
+        "period": "Real-time atmospheric reading"
     }
 
-    # Slice past 7 days (the 7 days immediately preceding today or inclusive of today)
-    # Using 7 distinct completed/recent observation days:
+    # Slice past 7 completed days preceding today
     slice_7_start = max(0, today_idx - 7)
     slice_7_end = today_idx
 
@@ -132,16 +133,18 @@ def fetch_comprehensive_weather(lat: float, lon: float, force_refresh: bool = Fa
         d_obj = datetime.datetime.strptime(d_str, "%Y-%m-%d")
         daily_7d.append({
             "date": d_str,
+            "date_formatted": d_obj.strftime("%b %d, %Y"),
             "date_label": d_obj.strftime("%b %d"),
             "rainfall": round(float(precip_sums[i] or 0.0), 1),
             "temperature_min": round(float(temp_mins[i] or 0.0), 1) if temp_mins[i] is not None else None,
             "temperature_max": round(float(temp_maxes[i] or 0.0), 1) if temp_maxes[i] is not None else None,
             "temperature_mean": round(float(temp_means[i] or 0.0), 1) if temp_means[i] is not None else None,
             "weather_code": weather_codes[i] if i < len(weather_codes) else 0,
-            "weather_condition": get_weather_condition(weather_codes[i] if i < len(weather_codes) else 0)
+            "weather_condition": get_weather_condition(weather_codes[i] if i < len(weather_codes) else 0),
+            "data_source": "Open-Meteo Historical/Reanalysis"
         })
 
-    # Slice past 30 days
+    # Slice past 30 completed days preceding today
     slice_30_start = max(0, today_idx - 30)
     slice_30_end = today_idx
 
@@ -151,13 +154,15 @@ def fetch_comprehensive_weather(lat: float, lon: float, force_refresh: bool = Fa
         d_obj = datetime.datetime.strptime(d_str, "%Y-%m-%d")
         daily_30d.append({
             "date": d_str,
+            "date_formatted": d_obj.strftime("%b %d, %Y"),
             "date_label": d_obj.strftime("%b %d"),
             "rainfall": round(float(precip_sums[i] or 0.0), 1),
             "temperature_min": round(float(temp_mins[i] or 0.0), 1) if temp_mins[i] is not None else None,
             "temperature_max": round(float(temp_maxes[i] or 0.0), 1) if temp_maxes[i] is not None else None,
             "temperature_mean": round(float(temp_means[i] or 0.0), 1) if temp_means[i] is not None else None,
             "weather_code": weather_codes[i] if i < len(weather_codes) else 0,
-            "weather_condition": get_weather_condition(weather_codes[i] if i < len(weather_codes) else 0)
+            "weather_condition": get_weather_condition(weather_codes[i] if i < len(weather_codes) else 0),
+            "data_source": "Open-Meteo Historical/Reanalysis"
         })
 
     # Statistical Aggregations (Past 7 Days & Past 30 Days)
@@ -192,6 +197,9 @@ def fetch_comprehensive_weather(lat: float, lon: float, force_refresh: bool = Fa
     rainy_days_7d = sum(1 for r in p7_rains if r >= 2.5)
     rainy_days_30d = sum(1 for r in p30_rains if r >= 2.5)
     heavy_rain_days_30d = sum(1 for r in p30_rains if r >= 64.5)
+
+    period_7d_str = f"{daily_7d[0]['date']} to {daily_7d[-1]['date']}" if daily_7d else ""
+    period_30d_str = f"{daily_30d[0]['date']} to {daily_30d[-1]['date']}" if daily_30d else ""
 
     # Monthly Rainfall Aggregation (Current month vs Previous calendar month)
     curr_year_month = now_ist.strftime("%Y-%m")
@@ -232,7 +240,8 @@ def fetch_comprehensive_weather(lat: float, lon: float, force_refresh: bool = Fa
             "month_name": dt_m.strftime("%B %Y"),
             "rainfall_total": round(sum(m_rains), 1),
             "rainy_days": sum(1 for r in m_rains if r >= 2.5),
-            "max_daily": max(m_rains) if m_rains else 0.0
+            "max_daily": max(m_rains) if m_rains else 0.0,
+            "data_source": "Open-Meteo Historical/Reanalysis"
         })
 
     statistics = {
@@ -248,13 +257,27 @@ def fetch_comprehensive_weather(lat: float, lon: float, force_refresh: bool = Fa
         "rainy_days_7d": rainy_days_7d,
         "rainy_days_30d": rainy_days_30d,
         "heavy_rain_days_30d": heavy_rain_days_30d,
-        "threshold_source": "India Meteorological Department (IMD): Rainy Day >= 2.5mm, Heavy Rain >= 64.5mm",
+        "period_7d": period_7d_str,
+        "period_30d": period_30d_str,
+        "threshold_source": "IMD Rainfall Classification Benchmark (Rainy Day >= 2.5mm, Heavy Rain >= 64.5mm)",
         "current_month_rainfall": curr_month_total,
         "current_month_name": now_ist.strftime("%B"),
         "current_month_average": curr_month_avg,
         "current_month_rainy_days": curr_month_rainy,
         "previous_month_rainfall": prev_month_total,
         "previous_month_name": last_of_prev_month.strftime("%B"),
+        "last_updated": formatted_updated,
+        "data_source": "Open-Meteo Historical/Reanalysis"
+    }
+
+    metadata = {
+        "current_weather_source": "Open-Meteo Weather API",
+        "current_weather_type": "Latest Available Weather Data",
+        "rainfall_data_source": "Open-Meteo Historical/Reanalysis",
+        "rainfall_data_type": "Historical/Reanalysis Estimates",
+        "classification_standard": "IMD Rainfall Classification Benchmark",
+        "classification_note": "IMD thresholds are used for scientific classification and hazard benchmarking; numerical precipitation values originate from Open-Meteo.",
+        "timezone": "Asia/Kolkata (IST)",
         "last_updated": formatted_updated
     }
 
@@ -268,8 +291,10 @@ def fetch_comprehensive_weather(lat: float, lon: float, force_refresh: bool = Fa
             "current_month_rainfall": curr_month_total,
             "previous_month_name": last_of_prev_month.strftime("%B"),
             "previous_month_rainfall": prev_month_total,
+            "data_source": "Open-Meteo Historical/Reanalysis",
             "recent_months": recent_months_list
-        }
+        },
+        "metadata": metadata
     }
 
     WEATHER_CACHE[cache_key] = (now_ts, payload)
@@ -299,17 +324,22 @@ def fetch_state_district_comparison(state_name: str) -> List[Dict[str, Any]]:
             results.append({
                 "district": d_name,
                 "rainfall_7d": w["statistics"]["rainfall_7d"],
+                "total_7d_mm": w["statistics"]["rainfall_7d"],
                 "rainfall_30d": w["statistics"]["rainfall_30d"],
                 "current_rainfall": w["current"]["rainfall"],
-                "temperature": w["current"]["temperature"]
+                "temperature": w["current"]["temperature"],
+                "data_source": "Open-Meteo Historical/Reanalysis",
+                "available": True
             })
         except Exception as e:
             results.append({
                 "district": d_name,
-                "rainfall_7d": 0.0,
-                "rainfall_30d": 0.0,
-                "current_rainfall": 0.0,
-                "temperature": 0.0,
+                "rainfall_7d": None,
+                "total_7d_mm": None,
+                "rainfall_30d": None,
+                "current_rainfall": None,
+                "temperature": None,
+                "available": False,
                 "error": str(e)
             })
 

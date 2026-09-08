@@ -1,0 +1,16 @@
+feature,importance,importance_pct,category
+dist_to_nearest_landslide_km,0.46615,46.62,Historical Landslide Density
+historical_landslide_density_10km,0.18994,18.99,Historical Landslide Density
+slope_gradient,0.08541,8.54,Terrain
+slope_deg,0.08508,8.51,Terrain
+soil_moisture_slope_interaction,0.05761,5.76,Terrain
+rainfall_slope_interaction,0.04014,4.01,Terrain
+elevation_m,0.03,3.0,Terrain
+vegetation_protection_ratio,0.01553,1.55,Vegetation / Land Cover
+soil_moisture_source_value,0.01172,1.17,Rainfall / Water
+distance_to_urban_center_km,0.0074,0.74,Infrastructure / Urban
+NDVI,0.0072,0.72,Vegetation / Land Cover
+annual_rainfall_mm,0.0022,0.22,Rainfall / Water
+aspect_cos,0.00088,0.09,Terrain
+aspect_sin,0.00052,0.05,Terrain
+landcover_class,0.00021,0.02,Vegetation / Land Cover
