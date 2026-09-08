@@ -47,9 +47,6 @@ document.addEventListener("DOMContentLoaded", () => {
   // Setup Field Report Form
   initFieldReportForm();
 
-  // Setup District Risk Predictor (State -> District -> Predict)
-  initDistrictRiskPredictor();
-
   // Setup Simulator
   initSimulator();
 
@@ -135,7 +132,6 @@ async function fetchInitialData() {
     initWeatherChart(weatherRes);
     initHistoricalChart();
     renderFieldReports();
-    updateDashboardActivePrediction();
 
   } catch (err) {
     console.error("Error fetching RIFT API data:", err);
@@ -563,7 +559,7 @@ function renderDistrictRiskPolygons(geoJsonData, stateFilter = "ALL") {
 
       // Click popup
       const popupHtml = buildDistrictPopupHtml(props);
-      layer.bindPopup(popupHtml, { maxWidth: 280 });
+      layer.bindPopup(popupHtml, { className: 'rift-custom-popup', maxWidth: 320, autoPanPadding: [30, 30] });
 
       // Interaction listeners
       layer.on({
@@ -587,7 +583,6 @@ function renderDistrictRiskPolygons(geoJsonData, stateFilter = "ALL") {
         },
         click: (e) => {
           displayDistrictDetails(props);
-          updateDashboardActivePrediction(props);
           fullGisMap.fitBounds(e.target.getBounds(), { maxZoom: 9, padding: [30, 30] });
         }
       });
@@ -654,13 +649,13 @@ function buildDistrictPopupHtml(props) {
         </span>
       </div>
       <div class="gis-popup-body">
-        <div style="font-size: 10px; color: #94a3b8; margin-bottom: 4px;">
+        <div class="gis-popup-assessment-row">
           <b>Assessment:</b> ${props.assessment_type || "District representative-point assessment"}
         </div>
-        <div style="font-size: 11px; margin-bottom: 6px;">
+        <div class="gis-popup-hazard-row">
           <b>Hazard Score:</b> <span style="font-weight: 700; color: ${props.risk_color};">${scoreStr}</span>
         </div>
-        <div style="font-size: 10px; color: #e2e8f0; line-height: 1.3; background: rgba(255,255,255,0.06); padding: 6px; border-radius: 4px; margin-bottom: 6px;">
+        <div class="gis-popup-explanation-box">
           ${props.explanation || "Risk evaluated using physical environmental factors."}
         </div>
         <div class="gis-popup-factors">
@@ -669,7 +664,7 @@ function buildDistrictPopupHtml(props) {
           <div>🌧️ Rain: <b>${rain}</b></div>
           <div>💧 Soil: <b>${soil}</b></div>
           <div>⚠️ GSI (10km): <b>${gsiCount}</b></div>
-          <div>🏛️ Road: <i style="color:#94a3b8">Unavailable</i></div>
+          <div>🏛️ Road: <i class="gis-popup-unavailable">Unavailable</i></div>
         </div>
         <button type="button" class="gis-popup-btn" data-district="${safeDistrictName}" onclick="window.openDistrictFullDetails('${safeDistrictName}')">
           <i data-lucide="external-link" style="width: 12px; height: 12px;"></i>
@@ -946,11 +941,6 @@ function renderMapMarkers(mapInstance, locations) {
       opacity: 0.95,
       fillOpacity: 0.85
     }).addTo(mapInstance);
-
-    // On click, update active dashboard prediction
-    circle.on("click", () => {
-      updateDashboardActivePrediction(loc);
-    });
 
     const safeDistrict = loc.name ? loc.name.replace(/'/g, "\\'") : "";
     const popupHtml = `
@@ -1976,247 +1966,6 @@ function handleRiskEvaluationError(err) {
   }
 }
 
-/**
- * Renders verified pipeline data into Main Dashboard Active Landslide Prediction Card
- */
-function renderDashboardActivePrediction(data) {
-  if (!data) return;
-  const badgeEl = document.getElementById("dashActiveRiskBadge");
-  const titleEl = document.getElementById("dashActiveLocationTitle");
-  const stateEl = document.getElementById("dashActiveLocationState");
-  const scoreEl = document.getElementById("dashActiveRiskScore");
-  const slopeEl = document.getElementById("dashActiveSlope");
-  const elevEl = document.getElementById("dashActiveElevation");
-  const rainEl = document.getElementById("dashActiveRainfall");
-  const soilEl = document.getElementById("dashActiveSoil");
-  const expEl = document.getElementById("dashActiveExplanation");
-
-  let distName = "Monitored Region";
-  let stateName = "Northeast India Region";
-  let riskLevel = "LOW";
-  let scoreVal = "0.0%";
-  let slopeVal = "—";
-  let elevVal = "—";
-  let rainVal = "—";
-  let soilVal = "—";
-  let explanation = "Evaluated by RIFT landslide machine learning pipeline.";
-
-  if (data.prediction && data.factors) {
-    // V4 AI Prediction API response
-    const f = data.factors || {};
-    const p = data.prediction || {};
-    const a = data.assessment || {};
-    distName = f.District ? `${f.District} District` : (data.location?.name || "Evaluated Coordinates");
-    stateName = f.State ? `${f.State}, Northeast India` : "Northeast India";
-    riskLevel = a.overall_risk_level || p.risk_category || "LOW";
-    scoreVal = p.hazard_probability_pct != null ? `${p.hazard_probability_pct.toFixed(1)}%` : (a.overall_risk_score != null ? `${a.overall_risk_score} pts` : "—");
-    slopeVal = f.slope_deg != null ? `${f.slope_deg}°` : "—";
-    elevVal = f.elevation_m != null ? `${Math.round(f.elevation_m)} m` : "—";
-    rainVal = f.annual_rainfall_mm != null ? `${Math.round(f.annual_rainfall_mm)} mm` : "—";
-    soilVal = f.soil_moisture_source_value != null ? `${f.soil_moisture_source_value}%` : "—";
-    explanation = a.explanation || explanation;
-  } else if (data.hazard_score != null || data.risk_category != null) {
-    // GeoJSON district properties
-    distName = `${data.district} District`;
-    stateName = `${data.state}, Northeast India`;
-    riskLevel = data.risk_category || "MODERATE";
-    scoreVal = `${Number(data.hazard_score).toFixed(1)}%`;
-    const f = data.factors || {};
-    slopeVal = f.slope_deg != null ? `${f.slope_deg}°` : "—";
-    elevVal = f.elevation_m != null ? `${Math.round(f.elevation_m)} m` : "—";
-    rainVal = f.annual_rainfall_mm != null ? `${Math.round(f.annual_rainfall_mm)} mm` : "—";
-    soilVal = f.soil_moisture_pct != null ? `${f.soil_moisture_pct}%` : "—";
-    explanation = data.explanation || explanation;
-  } else if (data.name) {
-    // locationsData point
-    distName = data.name;
-    stateName = data.state ? `${data.state}, Northeast India` : "Northeast India";
-    riskLevel = data.riskLevel || "LOW";
-    scoreVal = `${data.probability}%`;
-    slopeVal = data.slope != null ? `${data.slope}°` : "—";
-    elevVal = data.elevation != null ? `${data.elevation} m` : "—";
-    rainVal = data.rainfall24h != null ? `${data.rainfall24h} mm (24h)` : "—";
-    soilVal = data.soilMoisture != null ? `${data.soilMoisture}%` : "—";
-    explanation = data.recommendedAction ? `Operational Directive: ${data.recommendedAction}` : explanation;
-  }
-
-  if (titleEl) titleEl.textContent = distName;
-  if (stateEl) stateEl.textContent = stateName;
-  if (badgeEl) {
-    badgeEl.className = `risk-badge ${riskLevel}`;
-    badgeEl.textContent = riskLevel;
-  }
-  if (scoreEl) scoreEl.textContent = scoreVal;
-  if (slopeEl) slopeEl.textContent = slopeVal;
-  if (elevEl) elevEl.textContent = elevVal;
-  if (rainEl) rainEl.textContent = rainVal;
-  if (soilEl) soilEl.textContent = soilVal;
-  if (expEl) expEl.textContent = explanation;
-}
-
-/**
- * Updates the Main Dashboard active prediction card from a given target or top priority location
- */
-async function updateDashboardActivePrediction(target) {
-  if (target) {
-    renderDashboardActivePrediction(target);
-    // If target has coordinates and is not yet a full prediction, query pipeline
-    const lat = target.lat || target.representative_coordinates?.lat || target.latitude;
-    const lon = target.lng || target.lon || target.representative_coordinates?.lon || target.longitude;
-    const district = target.district || target.name;
-    const state = target.state;
-
-    if (lat != null && lon != null && (!target.prediction || !target.assessment)) {
-      try {
-        const bodyPayload = { latitude: lat, longitude: lon };
-        if (district) bodyPayload.district = district;
-        if (state) bodyPayload.state = state;
-        const res = await fetch("/api/ai-risk/predict", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(bodyPayload)
-        });
-        if (res.ok) {
-          const aiData = await res.json();
-          renderDashboardActivePrediction(aiData);
-        }
-      } catch (err) {
-        console.warn("[Dashboard Prediction] Pipeline evaluation error:", err);
-      }
-    }
-    return;
-  }
-
-  // Default: Evaluate highest-priority monitored location in Northeast India
-  try {
-    const res = await fetch("/api/ai-risk/predict", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ latitude: 23.7271, longitude: 92.7176, district: "Aizawl", state: "Mizoram" })
-    });
-    if (res.ok) {
-      const aiData = await res.json();
-      renderDashboardActivePrediction(aiData);
-    }
-  } catch (e) {
-    console.warn("[Dashboard Prediction] Top priority default error:", e);
-  }
-}
-
-/**
- * Initializes State -> District -> Predict Risk workflow on AI Prediction page.
- * Seamlessly pipes State + District into the unified risk prediction pipeline.
- */
-function initDistrictRiskPredictor() {
-  const stateSel = document.getElementById("predStateSelect");
-  const distSel = document.getElementById("predDistrictSelect");
-  const btnPred = document.getElementById("btnPredictDistrictRisk");
-
-  if (!stateSel || !distSel) return;
-
-  // On State selection: populate District dropdown
-  stateSel.addEventListener("change", async () => {
-    const state = stateSel.value;
-    if (btnPred) btnPred.disabled = true;
-
-    if (!state) {
-      distSel.innerHTML = `<option value="">Select State First</option>`;
-      distSel.disabled = true;
-      return;
-    }
-
-    distSel.disabled = false;
-    distSel.innerHTML = `<option value="">Loading districts...</option>`;
-
-    try {
-      const res = await fetch(`/api/northeast/districts?state=${encodeURIComponent(state)}`);
-      if (!res.ok) throw new Error("Failed to load districts");
-      const data = await res.json();
-      const districts = data.districts || [];
-      if (districts.length === 0) {
-        distSel.innerHTML = `<option value="">No districts found</option>`;
-      } else {
-        distSel.innerHTML = `<option value="">-- Choose District (${districts.length}) --</option>` +
-          districts.map(d => `<option value="${d}">${d}</option>`).join("");
-      }
-    } catch (err) {
-      console.warn("Error loading districts for predictor:", err);
-      distSel.innerHTML = `<option value="">Failed to load districts</option>`;
-    }
-  });
-
-  // Helper to execute district risk workflow
-  async function runDistrictRiskWorkflow() {
-    const state = stateSel.value;
-    const district = distSel.value;
-
-    if (!state || !district) return;
-
-    // Reset results and factor cards to loading state (clear stale data)
-    resetRiskResultsToLoading(`Evaluating official physical factors for ${district}, ${state}...`);
-
-    try {
-      // 1. Resolve representative coordinates and official factors
-      const fRes = await fetch(`/api/district-factors?state=${encodeURIComponent(state)}&district=${encodeURIComponent(district)}`);
-      if (!fRes.ok) throw new Error("Failed to resolve district coordinates");
-      const fData = await fRes.json();
-      const coords = fData.coordinates || {};
-      const lat = coords.lat;
-      const lon = coords.lon;
-
-      if (lat != null && lon != null) {
-        // 2. Populate / update coordinate display in location HUD / input fields
-        const latInput = document.getElementById("aiLocLatitude");
-        const lonInput = document.getElementById("aiLocLongitude");
-        const dashLat = document.getElementById("locLatValue");
-        const dashLng = document.getElementById("locLngValue");
-        const accEl = document.getElementById("aiLocAccuracy") || document.getElementById("locAccValue");
-
-        if (latInput) latInput.value = lat.toFixed(6);
-        if (lonInput) lonInput.value = lon.toFixed(6);
-        if (dashLat) dashLat.textContent = lat.toFixed(6) + "°";
-        if (dashLng) dashLng.textContent = lon.toFixed(6) + "°";
-        if (accEl) accEl.textContent = "District Centroid";
-
-        currentUserLocation = {
-          latitude: lat,
-          longitude: lon,
-          accuracy: 50,
-          timestamp: Date.now()
-        };
-
-        // Update GIS map user location marker & nearest district
-        updateGisMapUserLocation(lat, lon, 50);
-        fetchNearestRiskDistrict(lat, lon);
-
-        // 3. Trigger unified prediction pipeline with verified district and state
-        await fetchLocationFactors(lat, lon, "District Centroid", district, state);
-      }
-    } catch (err) {
-      console.error("Error executing district risk prediction:", err);
-      handleRiskEvaluationError(err);
-    }
-  }
-
-  // On District selection: execute workflow immediately
-  distSel.addEventListener("change", () => {
-    if (distSel.value) {
-      if (btnPred) btnPred.disabled = false;
-      runDistrictRiskWorkflow();
-    } else {
-      if (btnPred) btnPred.disabled = true;
-    }
-  });
-
-  // On Predict Risk button click: re-execute workflow
-  if (btnPred) {
-    btnPred.addEventListener("click", (e) => {
-      if (e) e.preventDefault();
-      runDistrictRiskWorkflow();
-    });
-  }
-}
-
 function setV4ChipValue(id, val, suffix = "") {
   const el = document.getElementById(id);
   if (!el) return;
@@ -2757,7 +2506,6 @@ async function fetchLocationFactors(lat, lng, acc, optDistrict = null, optState 
 
     const aiData = await aiRes.json();
     renderV4AiPrediction(aiData);
-    renderDashboardActivePrediction(aiData);
 
     // 1. LOCATION CARD
     const valLocLat = document.getElementById("valFactorLat");

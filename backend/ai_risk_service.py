@@ -387,18 +387,40 @@ def predict_ai_risk(
     final_state = overrides.get("state") or state_val
 
     # Query authentic physical profiles (Copernicus DEM, IMD 30-yr normals, ESA WorldCover)
-    profile = {}
+    profile: Dict[str, Any] = {}
     if final_district:
         from backend.gis_service import DISTRICT_PHYSICAL_PROFILES
-        profile = DISTRICT_PHYSICAL_PROFILES.get(final_district)
-        if not profile:
-            d_lower = str(final_district).strip().lower()
+        matched_prof = DISTRICT_PHYSICAL_PROFILES.get(final_district)
+        if not matched_prof:
+            d_clean = str(final_district).strip().lower().replace(" district", "")
+            ALIAS_MAP = {
+                "gangtok": "north sikkim",
+                "east sikkim": "north sikkim",
+                "pakyong": "south sikkim",
+                "namchi": "south sikkim",
+                "mangan": "north sikkim",
+                "gyalshing": "west sikkim",
+                "west sikkim": "west sikkim",
+                "soreng": "west sikkim",
+                "imphal west": "west imphal",
+                "imphal east": "east imphal",
+                "west imphal": "west imphal",
+                "east imphal": "east imphal",
+                "dima hasao": "north cachar hills",
+                "north cachar hills": "north cachar hills",
+                "kamrup metropolitan": "kamrup",
+                "kamrup metro": "kamrup",
+                "ri bhoi": "ri-bhoi",
+                "ri-bhoi": "ri-bhoi",
+            }
+            target_alias = ALIAS_MAP.get(d_clean, d_clean)
             for k, v in DISTRICT_PHYSICAL_PROFILES.items():
-                k_lower = k.lower()
-                if k_lower == d_lower or k_lower in d_lower or d_lower in k_lower:
-                    profile = v
+                k_clean = k.strip().lower().replace(" district", "")
+                if k_clean == target_alias or k_clean == d_clean or k_clean in d_clean or d_clean in k_clean:
+                    matched_prof = v
                     break
-        if profile:
+        if matched_prof:
+            profile = matched_prof
             is_within_ner = True
 
     # 4. Construct feature dictionary for all 12 V4 inputs using real parameters

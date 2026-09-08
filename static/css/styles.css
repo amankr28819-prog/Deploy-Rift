@@ -2947,40 +2947,45 @@ body.light-theme .col-temp-max {
 
 /* Leaflet Custom Popups */
 .leaflet-popup-content-wrapper {
-  background: #0f172a !important;
-  color: #f8fafc !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  background: var(--bg-card, #0f172a) !important;
+  color: var(--text-primary, #f8fafc) !important;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.15)) !important;
   border-radius: 8px !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
 }
 
 .leaflet-popup-tip {
-  background: #0f172a !important;
+  background: var(--bg-card, #0f172a) !important;
 }
 
 .gis-popup-container {
-  padding: 4px;
-  font-family: 'Inter', sans-serif;
-  max-width: 260px;
+  padding: 12px 14px;
+  font-family: 'Inter', -apple-system, sans-serif;
+  min-width: 260px;
+  max-width: 320px;
 }
 
 .gis-popup-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 8px;
-  margin-bottom: 6px;
+  gap: 10px;
+  margin-bottom: 10px;
+  padding-bottom: 6px;
+  padding-right: 28px;
+  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
 }
 
 .gis-popup-title {
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--text-primary, #f8fafc);
+  line-height: 1.3;
 }
 
 .gis-popup-state {
   font-size: 10px;
-  color: #94a3b8;
+  color: var(--text-muted, #94a3b8);
 }
 
 .gis-popup-badge {
@@ -2994,9 +2999,32 @@ body.light-theme .col-temp-max {
 
 .gis-popup-body {
   font-size: 11px;
-  color: #cbd5e1;
+  color: var(--text-secondary, #cbd5e1);
   line-height: 1.4;
   margin-bottom: 8px;
+}
+
+.gis-popup-assessment-row {
+  font-size: 10px;
+  color: var(--text-muted, #94a3b8);
+  margin-bottom: 4px;
+}
+
+.gis-popup-hazard-row {
+  font-size: 11px;
+  color: var(--text-primary, #f8fafc);
+  margin-bottom: 6px;
+}
+
+.gis-popup-explanation-box {
+  font-size: 10.5px;
+  color: var(--text-primary, #e2e8f0);
+  line-height: 1.35;
+  background: var(--bg-card-inner, rgba(255, 255, 255, 0.06));
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  margin-bottom: 6px;
 }
 
 .gis-popup-factors {
@@ -3004,9 +3032,19 @@ body.light-theme .col-temp-max {
   grid-template-columns: 1fr 1fr;
   gap: 4px;
   font-size: 10px;
+  color: var(--text-primary, #f8fafc);
   margin-top: 6px;
   padding-top: 6px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+}
+
+.gis-popup-factors b {
+  color: var(--text-primary, #f8fafc);
+}
+
+.gis-popup-unavailable {
+  color: var(--text-muted, #94a3b8);
+  font-style: normal;
 }
 
 .gis-popup-btn {
@@ -3035,6 +3073,114 @@ body.light-theme .col-temp-max {
 
 .gis-popup-btn:active {
   transform: translateY(0);
+}
+
+/* Light Theme Overrides for Leaflet Popups */
+body.light-theme .leaflet-popup-content-wrapper,
+body.light-theme .leaflet-popup.rift-custom-popup .leaflet-popup-content-wrapper {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+}
+
+body.light-theme .leaflet-popup-tip,
+body.light-theme .leaflet-popup.rift-custom-popup .leaflet-popup-tip {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+body.light-theme .leaflet-popup a.leaflet-popup-close-button,
+body.light-theme .leaflet-popup.rift-custom-popup a.leaflet-popup-close-button {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+body.light-theme .leaflet-popup a.leaflet-popup-close-button:hover,
+body.light-theme .leaflet-popup.rift-custom-popup a.leaflet-popup-close-button:hover {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+  border-color: #ef4444 !important;
+}
+
+body.light-theme .gis-popup-title,
+body.light-theme .popup-region-title {
+  color: #0f172a !important;
+}
+
+body.light-theme .gis-popup-state {
+  color: #475569 !important;
+}
+
+body.light-theme .gis-popup-body {
+  color: #334155 !important;
+}
+
+body.light-theme .gis-popup-assessment-row {
+  color: #475569 !important;
+}
+
+body.light-theme .gis-popup-hazard-row {
+  color: #0f172a !important;
+}
+
+body.light-theme .gis-popup-explanation-box {
+  background: #f8fafc !important;
+  color: #1e293b !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+body.light-theme .gis-popup-factors {
+  color: #1e293b !important;
+  border-top-color: #e2e8f0 !important;
+}
+
+body.light-theme .gis-popup-factors b {
+  color: #0f172a !important;
+}
+
+body.light-theme .gis-popup-unavailable {
+  color: #64748b !important;
+}
+
+body.light-theme .popup-factor-box {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+body.light-theme .popup-factor-label {
+  color: #475569 !important;
+}
+
+body.light-theme .popup-factor-val {
+  color: #0f172a !important;
+}
+
+body.light-theme .popup-corridor-row {
+  background: #f8fafc !important;
+  border-color: #e2e8f0 !important;
+}
+
+body.light-theme .popup-corridor-label {
+  color: #475569 !important;
+}
+
+body.light-theme .popup-corridor-val {
+  color: #c2410c !important;
+}
+
+body.light-theme .popup-action-directive {
+  background: #fff7ed !important;
+  border-left-color: #ea580c !important;
+}
+
+body.light-theme .popup-action-header {
+  color: #9a3412 !important;
+}
+
+body.light-theme .popup-action-body {
+  color: #1e293b !important;
 }
 
 /* District Full Details Modal */
