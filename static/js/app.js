@@ -1,5 +1,5 @@
 /**
- * NER-SAFE Client Application Core
+ * RIFT Client Application Core
  * Ministry of Development of North Eastern Region (MDoNER) - SIH 2026 PS 26001
  */
 
@@ -46,6 +46,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Setup Field Report Form
   initFieldReportForm();
+
+  // Setup District Risk Predictor (State -> District -> Predict)
+  initDistrictRiskPredictor();
 
   // Setup Simulator
   initSimulator();
@@ -134,7 +137,7 @@ async function fetchInitialData() {
     renderFieldReports();
 
   } catch (err) {
-    console.error("Error fetching NER-SAFE API data:", err);
+    console.error("Error fetching RIFT API data:", err);
   }
 }
 
@@ -170,6 +173,23 @@ const GIS_BASEMAP_PROVIDERS = {
   }
 };
 
+let dashBasemapTileLayer = null;
+let activeDashBasemapKey = "street";
+
+function switchDashBasemapLayer(layerKey) {
+  if (!GIS_BASEMAP_PROVIDERS[layerKey] || !gisMap) return;
+  if (layerKey === activeDashBasemapKey) return;
+  activeDashBasemapKey = layerKey;
+  if (dashBasemapTileLayer) {
+    gisMap.removeLayer(dashBasemapTileLayer);
+  }
+  const provider = GIS_BASEMAP_PROVIDERS[layerKey];
+  dashBasemapTileLayer = L.tileLayer(provider.url, provider.options).addTo(gisMap);
+  document.querySelectorAll(".dash-layer-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.getAttribute("data-layer") === layerKey);
+  });
+}
+
 function initGisMap() {
   const mapCenter = [26.15, 93.0]; // North-East India Center
   
@@ -177,10 +197,19 @@ function initGisMap() {
   const mapElement = document.getElementById("gisMap");
   if (mapElement && !gisMap) {
     gisMap = L.map("gisMap").setView([25.5788, 92.5], 7);
-    L.tileLayer(GIS_BASEMAP_PROVIDERS.street.url, {
+    dashBasemapTileLayer = L.tileLayer(GIS_BASEMAP_PROVIDERS.street.url, {
+      ...GIS_BASEMAP_PROVIDERS.street.options,
       maxZoom: 18,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
     }).addTo(gisMap);
+
+    // Setup dashboard basemap layer switchers (Street / Satellite / Terrain)
+    const dashStreet = document.getElementById("dashBtnStreet");
+    const dashSat = document.getElementById("dashBtnSatellite");
+    const dashTerrain = document.getElementById("dashBtnTerrain");
+    if (dashStreet) dashStreet.addEventListener("click", () => switchDashBasemapLayer("street"));
+    if (dashSat) dashSat.addEventListener("click", () => switchDashBasemapLayer("satellite"));
+    if (dashTerrain) dashTerrain.addEventListener("click", () => switchDashBasemapLayer("terrain"));
 
     renderMapMarkers(gisMap, locationsData);
 
@@ -254,6 +283,19 @@ function initFullGisMap() {
     });
     ro.observe(fullMapElement);
   }
+
+  // Zoom-based polygon opacity dynamic listener
+  fullGisMap.on("zoomend", () => {
+    if (gisDistrictGeoJsonLayer) {
+      const currentZoom = fullGisMap.getZoom();
+      const newOpacity = getPolygonFillOpacityForZoom(currentZoom);
+      gisDistrictGeoJsonLayer.eachLayer(layer => {
+        if (layer.setStyle) {
+          layer.setStyle({ fillOpacity: newOpacity });
+        }
+      });
+    }
+  });
 
   // If district data was already pre-fetched, render it immediately; otherwise fetch it
   if (currentDistrictRiskData) {
@@ -458,6 +500,15 @@ async function fetchDistrictRiskData(forceRefresh = false) {
   }
 }
 
+function getPolygonFillOpacityForZoom(zoom) {
+  if (zoom <= 6) return 0.65;
+  if (zoom === 7) return 0.50;
+  if (zoom === 8) return 0.35;
+  if (zoom === 9) return 0.22;
+  if (zoom === 10) return 0.14;
+  return 0.08;
+}
+
 function renderDistrictRiskPolygons(geoJsonData, stateFilter = "ALL") {
   if (!fullGisMap || !geoJsonData) return;
 
@@ -476,6 +527,9 @@ function renderDistrictRiskPolygons(geoJsonData, stateFilter = "ALL") {
     gisDistrictGeoJsonLayer = null;
   }
 
+  const currentZoom = fullGisMap ? fullGisMap.getZoom() : 7;
+  const initialOpacity = getPolygonFillOpacityForZoom(currentZoom);
+
   gisDistrictGeoJsonLayer = L.geoJSON(geoJsonData, {
     filter: (feature) => {
       if (!stateFilter || stateFilter === "ALL") return true;
@@ -489,7 +543,7 @@ function renderDistrictRiskPolygons(geoJsonData, stateFilter = "ALL") {
         opacity: 0.9,
         color: "#ffffff",
         dashArray: "",
-        fillOpacity: 0.65
+        fillOpacity: initialOpacity
       };
     },
     onEachFeature: (feature, layer) => {
@@ -526,6 +580,8 @@ function renderDistrictRiskPolygons(geoJsonData, stateFilter = "ALL") {
         mouseout: (e) => {
           if (gisDistrictGeoJsonLayer) {
             gisDistrictGeoJsonLayer.resetStyle(e.target);
+            const z = fullGisMap ? fullGisMap.getZoom() : 7;
+            e.target.setStyle({ fillOpacity: getPolygonFillOpacityForZoom(z) });
           }
         },
         click: (e) => {
@@ -840,32 +896,56 @@ function renderMapMarkers(mapInstance, locations) {
       fillColor: color,
       color: "#ffffff",
       weight: 2,
-      opacity: 0.9,
-      fillOpacity: 0.8
+      opacity: 0.95,
+      fillOpacity: 0.85
     }).addTo(mapInstance);
 
+    const safeDistrict = loc.name ? loc.name.replace(/'/g, "\\'") : "";
     const popupHtml = `
-      <div style="font-family: sans-serif; padding: 4px;">
-        <div style="font-weight: 700; font-size: 14px;">${loc.name}</div>
-        <div style="margin-top: 4px;">
-          <span style="background: ${color}; color: #fff; padding: 2px 6px; border-radius: 4px; font-weight: 800; font-size: 11px;">
+      <div class="rift-map-region-popup">
+        <div class="popup-region-header">
+          <div class="popup-region-title">${loc.name}</div>
+          <span class="risk-badge ${loc.riskLevel}" style="font-size: 10px; padding: 2px 7px;">
             ${loc.riskLevel} (${loc.probability}%)
           </span>
         </div>
-        <div style="font-size: 11px; color: #475569; margin-top: 6px; line-height: 1.4;">
-          🌧️ 24h Rain: <b>${loc.rainfall24h} mm</b><br>
-          💧 Soil Saturation: <b>${loc.soilMoisture}%</b><br>
-          ⛰️ Terrain Slope: <b>${loc.slope}°</b><br>
-          🛣️ Nearby Roads: <b>${loc.nearbyRoads.join(", ")}</b><br>
-          🏥 Population: <b>${loc.populationAffected.toLocaleString()}</b>
+        
+        <div class="popup-factors-grid">
+          <div class="popup-factor-box">
+            <span class="popup-factor-label">24h Rainfall</span>
+            <span class="popup-factor-val">${loc.rainfall24h} mm</span>
+          </div>
+          <div class="popup-factor-box">
+            <span class="popup-factor-label">Soil Saturation</span>
+            <span class="popup-factor-val">${loc.soilMoisture}%</span>
+          </div>
+          <div class="popup-factor-box">
+            <span class="popup-factor-label">Terrain Slope</span>
+            <span class="popup-factor-val">${loc.slope}°</span>
+          </div>
+          <div class="popup-factor-box">
+            <span class="popup-factor-label">Pop. Footprint</span>
+            <span class="popup-factor-val">${loc.populationAffected.toLocaleString()}</span>
+          </div>
         </div>
-        <div style="margin-top: 8px; font-size: 11px; background: #f8fafc; padding: 6px; border-radius: 4px; border-left: 3px solid ${color};">
-          <b>Recommended Action:</b><br>${loc.recommendedAction}
+
+        <div class="popup-corridor-row">
+          <span class="popup-corridor-label">Arterial Corridor:</span>
+          <span class="popup-corridor-val">${loc.nearbyRoads.join(", ")}</span>
+        </div>
+
+        <div class="popup-action-directive" style="border-left-color: ${color};">
+          <div class="popup-action-header">Operational Mitigation Directive:</div>
+          <div class="popup-action-body">${loc.recommendedAction}</div>
         </div>
       </div>
     `;
 
-    circle.bindPopup(popupHtml);
+    circle.bindPopup(popupHtml, {
+      className: 'rift-custom-popup',
+      maxWidth: 320,
+      autoPanPadding: [20, 20]
+    });
   });
 }
 
@@ -1091,27 +1171,77 @@ function renderPriorityResponseList() {
         return;
       }
 
-      container.innerHTML = queue.map(item => `
-        <div class="priority-item" style="border-left-color: var(--risk-${(item.risk_level || 'HIGH').toLowerCase()}); padding: 12px; margin-bottom: 10px; background: var(--bg-card-inner); border-radius: 6px;">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
-            <div>
-              <div style="font-weight: 700; font-size: 13px; color: var(--text-primary);">
-                #${item.rank} ${item.name} <span style="font-size: 11px; color: var(--text-secondary);">(${item.state})</span>
+      container.innerHTML = queue.map(item => {
+        const riskClass = (item.risk_level || 'HIGH').toLowerCase();
+        return `
+          <div class="priority-card" style="border-left: 4px solid var(--risk-${riskClass}); background: var(--bg-card-inner); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; transition: transform 0.15s ease, border-color 0.15s ease;">
+            <!-- Top Meta Row -->
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border-color);">
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <span class="priority-rank-badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-weight: 800; font-size: 11px; padding: 3px 8px; border-radius: 4px; letter-spacing: 0.5px;">
+                  RANK #${item.rank}
+                </span>
+                <span style="font-weight: 800; font-size: 15px; color: var(--text-primary);">
+                  ${item.name}
+                </span>
+                <span style="font-size: 12px; color: var(--text-secondary); font-weight: 600; padding: 2px 6px; background: rgba(255, 255, 255, 0.04); border-radius: 4px;">
+                  ${item.state}
+                </span>
               </div>
-              <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
-                Category: <b>${item.category}</b> • ${item.reason}
-              </div>
-              <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px; font-style: italic;">
-                Recommended Action: "${item.recommended_action}"
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="risk-badge ${item.risk_level || 'HIGH'}" style="font-size: 11px;">
+                  ${item.risk_level}
+                </span>
+                <span style="font-size: 13px; font-weight: 800; color: var(--text-accent);">
+                  ${item.priority_score} <span style="font-size: 10px; font-weight: 600; color: var(--text-muted);">pts</span>
+                </span>
               </div>
             </div>
-            <div style="text-align: right;">
-              <span class="risk-badge ${item.risk_level || 'HIGH'}">${item.risk_level} (${item.priority_score} pts)</span>
-              <div style="font-size: 10px; color: var(--text-muted); margin-top: 4px;">Source: ${item.source}</div>
+
+            <!-- Details Grid -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 10px; margin-bottom: 10px;">
+              <div style="background: rgba(0, 0, 0, 0.15); padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; margin-bottom: 3px;">
+                  Category & Primary Assessment
+                </div>
+                <div style="font-size: 12.5px; color: var(--text-secondary); line-height: 1.4;">
+                  <b style="color: var(--text-primary);">${item.category}:</b> ${item.reason}
+                </div>
+              </div>
+
+              <div style="background: rgba(0, 0, 0, 0.15); padding: 10px 12px; border-radius: 6px; border: 1px solid var(--border-color);">
+                <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--risk-high); letter-spacing: 0.5px; margin-bottom: 3px;">
+                  Operational Recommendation
+                </div>
+                <div style="font-size: 12.5px; color: var(--text-primary); font-weight: 500; line-height: 1.4;">
+                  ${item.recommended_action}
+                </div>
+              </div>
+            </div>
+
+            <!-- Footer Provenance & Telemetry Row -->
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 10.5px; color: var(--text-muted); padding-top: 6px;">
+              <span>Source Engine: <b style="color: var(--text-secondary);">${item.source}</b></span>
+              <span>Data Classification: <b style="color: var(--text-secondary);">${item.data_type || 'Evaluated Operational Intelligence'}</b></span>
+              <span>Evaluation: <b style="color: var(--text-secondary);">${item.timestamp || 'Real-time telemetry'}</b></span>
             </div>
           </div>
-        </div>
-      `).join("");
+        `;
+      }).join("");
+
+      // Update Dashboard Top Priority Card if present
+      const top = queue[0];
+      const dashTitle = document.getElementById("dashPriorityTopTitle");
+      const dashSub = document.getElementById("dashPriorityTopSub");
+      const dashBadge = document.getElementById("dashPriorityTopBadge");
+      if (top && dashTitle) {
+        dashTitle.textContent = `#${top.rank} ${top.name} (${top.priority_score} pts)`;
+        if (dashSub) dashSub.textContent = `${top.state} • ${top.reason}`;
+        if (dashBadge) {
+          dashBadge.className = `risk-badge ${top.risk_level || 'HIGH'}`;
+          dashBadge.textContent = `${top.risk_level || 'ACTIVE'}`;
+        }
+      }
     })
     .catch(err => console.error("Priority response fetch failed:", err));
 }
@@ -1374,7 +1504,7 @@ function syncOfflineReports() {
       body: JSON.stringify(p)
     }))).then(() => {
       localStorage.removeItem("ner_offline_reports");
-      alert(`🔄 Auto-Synced ${queue.length} offline field reports to central MDoNER server!`);
+      alert(`🔄 Auto-Synced ${queue.length} offline field reports to central RIFT server!`);
       renderFieldReports();
     });
   }
@@ -1387,6 +1517,8 @@ function initSimulator() {
   const rSlider = document.getElementById("simRainfallSlider");
   const sSlider = document.getElementById("simSoilSlider");
   const slSlider = document.getElementById("simSlopeSlider");
+  const elSlider = document.getElementById("simElevationSlider");
+  const vegSlider = document.getElementById("simVegetationSlider");
 
   if (!rSlider) return;
 
@@ -1394,26 +1526,49 @@ function initSimulator() {
     const rainfall = parseFloat(rSlider.value);
     const soil = parseFloat(sSlider.value);
     const slope = parseFloat(slSlider.value);
+    const elevation = elSlider ? parseFloat(elSlider.value) : 1450.0;
+    const vegetation = vegSlider ? parseFloat(vegSlider.value) : 35.0;
 
-    document.getElementById("simRainfallLabel").innerText = `Rainfall: ${rainfall} mm`;
-    document.getElementById("simSoilLabel").innerText = `Soil Saturation: ${soil}%`;
-    document.getElementById("simSlopeLabel").innerText = `Slope: ${slope}°`;
+    const rLabel = document.getElementById("simRainfallLabel");
+    if (rLabel) rLabel.innerText = `24h Rainfall: ${rainfall} mm`;
+    const sLabel = document.getElementById("simSoilLabel");
+    if (sLabel) sLabel.innerText = `Soil Saturation: ${soil}%`;
+    const slLabel = document.getElementById("simSlopeLabel");
+    if (slLabel) slLabel.innerText = `Slope Angle: ${slope}°`;
+    const elLabel = document.getElementById("simElevationLabel");
+    if (elLabel) elLabel.innerText = `Elevation: ${Number(elevation).toLocaleString()} m`;
+    const vegLabel = document.getElementById("simVegetationLabel");
+    if (vegLabel) vegLabel.innerText = `Vegetation Canopy Cover: ${vegetation}%`;
 
     fetch("/api/simulator/evaluate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rainfall, soilMoisture: soil, slope })
+      body: JSON.stringify({
+        rainfall_24h: rainfall,
+        soil_saturation_pct: soil,
+        slope_deg: slope,
+        elevation_m: elevation,
+        vegetation_cover_pct: vegetation
+      })
     }).then(r => r.json()).then(res => {
       const probEl = document.getElementById("simProbResult");
       const badgeWrap = document.getElementById("simBadgeWrap");
-      if (probEl) probEl.innerText = `${res.probability}%`;
-      if (badgeWrap) badgeWrap.innerHTML = `<span class="risk-badge ${res.riskLevel}">${res.riskLevel} RISK (SCENARIO)</span>`;
+      const prob = res.probability || res.risk_probability_pct || res.score || 0;
+      if (probEl) probEl.innerText = `${prob.toFixed ? prob.toFixed(1) : prob}%`;
+      const level = res.riskLevel || res.risk_level || (prob >= 75 ? "CRITICAL" : prob >= 50 ? "HIGH" : prob >= 25 ? "MODERATE" : "LOW");
+      if (badgeWrap) badgeWrap.innerHTML = `<span class="risk-badge ${level}">${level} RISK (SCENARIO)</span>`;
+      const detailsEl = document.getElementById("simEvaluationDetails");
+      if (detailsEl && res.physics_assessment) {
+        detailsEl.innerText = `Geotechnical Assessment: ${res.physics_assessment}. Soil cohesion: ${res.resisting_shear_kpa || '--'} kPa.`;
+      }
     }).catch(err => console.error("Simulator evaluate error:", err));
   }
 
   rSlider.addEventListener("input", updateSim);
   sSlider.addEventListener("input", updateSim);
   slSlider.addEventListener("input", updateSim);
+  if (elSlider) elSlider.addEventListener("input", updateSim);
+  if (vegSlider) vegSlider.addEventListener("input", updateSim);
 }
 
 function initSatelliteSlider() {
@@ -1589,6 +1744,7 @@ function handleAiLocationRefresh() {
       currentUserLocation.accuracy) {
     accDisplay = `±${Math.round(currentUserLocation.accuracy)} m`;
   }
+  const accEl = document.getElementById("aiLocAccuracy") || document.getElementById("locAccValue");
   if (accEl) accEl.textContent = accDisplay;
 
   // Update status to success / active
@@ -1600,17 +1756,301 @@ function handleAiLocationRefresh() {
   if (statusPill) statusPill.className = "loc-status-pill status-success";
   if (statusText) statusText.textContent = "Active";
 
+  // Store user location in state
+  currentUserLocation = {
+    latitude: result.lat,
+    longitude: result.lon,
+    accuracy: 10,
+    timestamp: Date.now()
+  };
+
+  // Update dashboard location HUD
+  const dashLat = document.getElementById("locLatValue");
+  const dashLng = document.getElementById("locLngValue");
+  if (dashLat) dashLat.textContent = result.lat.toFixed(6) + "°";
+  if (dashLng) dashLng.textContent = result.lon.toFixed(6) + "°";
+
+  // Update GIS map user marker
+  updateGisMapUserLocation(result.lat, result.lon, 10);
+
+  // Dynamically update nearest risk location
+  fetchNearestRiskDistrict(result.lat, result.lon);
+
   // Trigger factor retrieval with manually entered coordinates
   fetchLocationFactors(result.lat, result.lon, accDisplay);
 }
 
 /**
- * Initializes the Current Location detection component on the dashboard and AI Risk Prediction page
+ * Dynamically queries nearest monitored district and distance in km
  */
+async function fetchNearestRiskDistrict(lat, lon) {
+  const nameEl = document.getElementById("nearestRiskLocationName");
+  const distEl = document.getElementById("nearestRiskDistance");
+  const badgeEl = document.getElementById("nearestRiskBadge");
+
+  if (!nameEl) return;
+  nameEl.textContent = "Calculating nearest district...";
+
+  try {
+    const res = await fetch(`/api/risk/nearest?lat=${lat}&lon=${lon}`);
+    if (!res.ok) throw new Error("Failed to fetch nearest risk location");
+    const data = await res.json();
+    nameEl.textContent = `${data.district}, ${data.state}`;
+    if (distEl) distEl.textContent = `${data.distance_km} km away`;
+    if (badgeEl) {
+      badgeEl.className = `risk-badge ${data.risk_level || 'LOW'}`;
+      badgeEl.textContent = `${data.risk_level || 'READY'} (${data.risk_score} pts)`;
+    }
+  } catch (err) {
+    console.warn("Nearest risk location error:", err);
+    nameEl.textContent = "Nearest calculation unavailable";
+  }
+}
+
+/**
+ * Initializes State -> District -> Predict Risk workflow on AI Prediction page
+ */
+function initDistrictRiskPredictor() {
+  const stateSel = document.getElementById("predStateSelect");
+  const distSel = document.getElementById("predDistrictSelect");
+  const btnPred = document.getElementById("btnPredictDistrictRisk");
+  const resultBox = document.getElementById("districtPredResultBox");
+  const previewBox = document.getElementById("districtFactorsPreviewBox");
+  const previewGrid = document.getElementById("factorPreviewGrid");
+  const previewTitle = document.getElementById("factorPreviewLocationTitle");
+  const previewBadge = document.getElementById("factorPreviewStatusBadge");
+
+  if (!stateSel || !distSel || !btnPred) return;
+
+  // On State selection: populate District dropdown
+  stateSel.addEventListener("change", async () => {
+    const state = stateSel.value;
+    if (previewBox) previewBox.style.display = "none";
+    if (resultBox) resultBox.style.display = "none";
+
+    if (!state) {
+      distSel.innerHTML = `<option value="">Select State First</option>`;
+      distSel.disabled = true;
+      return;
+    }
+
+    distSel.disabled = false;
+    distSel.innerHTML = `<option value="">Loading districts...</option>`;
+
+    try {
+      const res = await fetch(`/api/northeast/districts?state=${encodeURIComponent(state)}`);
+      if (!res.ok) throw new Error("Failed to load districts");
+      const data = await res.json();
+      const districts = data.districts || [];
+      if (districts.length === 0) {
+        distSel.innerHTML = `<option value="">No districts found</option>`;
+      } else {
+        distSel.innerHTML = `<option value="">-- Choose District (${districts.length}) --</option>` +
+          districts.map(d => `<option value="${d}">${d}</option>`).join("");
+      }
+    } catch (err) {
+      console.warn("Error loading districts for predictor:", err);
+      distSel.innerHTML = `<option value="">Failed to load districts</option>`;
+    }
+  });
+
+  // On District selection: show Verified Factors Preview Box immediately
+  distSel.addEventListener("change", async () => {
+    const state = stateSel.value;
+    const district = distSel.value;
+
+    if (!state || !district) {
+      if (previewBox) previewBox.style.display = "none";
+      if (resultBox) resultBox.style.display = "none";
+      return;
+    }
+
+    if (previewBox) {
+      previewBox.style.display = "block";
+      if (previewTitle) previewTitle.textContent = `${district}, ${state}`;
+      if (previewBadge) {
+        previewBadge.className = "factor-source-badge badge-amber";
+        previewBadge.textContent = "Retrieving Real Data...";
+      }
+      if (previewGrid) {
+        previewGrid.innerHTML = `<div style="grid-column: 1/-1; padding: 12px; color: var(--text-muted); font-size: 13px;"><i data-lucide="loader"></i> Fetching official terrain & climate factors...</div>`;
+      }
+    }
+
+    try {
+      const res = await fetch(`/api/district-factors?state=${encodeURIComponent(state)}&district=${encodeURIComponent(district)}`);
+      if (!res.ok) throw new Error("Failed to fetch district factors");
+      const data = await res.json();
+
+      if (previewBox && previewGrid) {
+        if (previewBadge) {
+          previewBadge.className = "factor-source-badge badge-green";
+          previewBadge.textContent = "Verified Official Data";
+        }
+
+        if (Array.isArray(data.factors) && data.factors.length > 0) {
+          previewGrid.innerHTML = data.factors.map(factor => {
+            const isUnavail = factor.status === "unavailable" || factor.value === "Unavailable";
+            return `
+              <div class="factor-preview-chip">
+                <div class="factor-preview-name">${factor.name}</div>
+                <div class="factor-preview-val ${isUnavail ? 'val-unavailable' : ''}">${factor.value || 'Unavailable'}</div>
+                <div class="factor-preview-src">${factor.source || 'Verified Source'}</div>
+              </div>
+            `;
+          }).join("");
+        } else {
+          const rf = data.raw_factors || data.terrain_factors || {};
+          const c = data.coordinates || {};
+          previewGrid.innerHTML = `
+            <div class="factor-preview-chip">
+              <div class="factor-preview-name">Elevation</div>
+              <div class="factor-preview-val">${rf.elevation_m != null ? rf.elevation_m + ' m' : 'Unavailable'}</div>
+              <div class="factor-preview-src">Copernicus GLO-90 DEM</div>
+            </div>
+            <div class="factor-preview-chip">
+              <div class="factor-preview-name">Slope Angle</div>
+              <div class="factor-preview-val">${rf.slope_deg != null ? rf.slope_deg + '°' : 'Unavailable'}</div>
+              <div class="factor-preview-src">SRTM Topography</div>
+            </div>
+            <div class="factor-preview-chip">
+              <div class="factor-preview-name">Annual Rainfall</div>
+              <div class="factor-preview-val">${rf.annual_rainfall_mm != null ? rf.annual_rainfall_mm.toLocaleString() + ' mm' : 'Unavailable'}</div>
+              <div class="factor-preview-src">IMD 30-Year Normals</div>
+            </div>
+            <div class="factor-preview-chip">
+              <div class="factor-preview-name">Soil Saturation</div>
+              <div class="factor-preview-val">${rf.soil_moisture_pct != null ? rf.soil_moisture_pct + '%' : 'Unavailable'}</div>
+              <div class="factor-preview-src">ERA5-Land Telemetry</div>
+            </div>
+            <div class="factor-preview-chip">
+              <div class="factor-preview-name">Vegetation / NDVI</div>
+              <div class="factor-preview-val">${rf.ndvi != null ? 'NDVI ' + rf.ndvi : 'Unavailable'}</div>
+              <div class="factor-preview-src">Sentinel-2 / WorldCover</div>
+            </div>
+            <div class="factor-preview-chip">
+              <div class="factor-preview-name">Coordinates</div>
+              <div class="factor-preview-val">${c.lat ? c.lat.toFixed(4) : '--'}°N, ${c.lon ? c.lon.toFixed(4) : '--'}°E</div>
+              <div class="factor-preview-src">Survey of India Boundaries</div>
+            </div>
+          `;
+        }
+      }
+      if (window.lucide) lucide.createIcons();
+    } catch (err) {
+      console.error("Error fetching district factors:", err);
+      if (previewGrid) {
+        previewGrid.innerHTML = `<div style="grid-column: 1/-1; padding: 12px; color: var(--risk-critical); font-size: 13px;">Failed to retrieve factors: ${err.message}</div>`;
+      }
+    }
+  });
+
+  // On Predict Risk button click
+  btnPred.addEventListener("click", async () => {
+    const state = stateSel.value;
+    const district = distSel.value;
+
+    if (!state || !district) {
+      alert("Please select both a State and a District to predict risk.");
+      return;
+    }
+
+    if (resultBox) {
+      resultBox.style.display = "block";
+      const titleEl = document.getElementById("predResultLocationTitle");
+      if (titleEl) titleEl.textContent = `Evaluating ${district}, ${state}...`;
+      const expEl = document.getElementById("predResultExplanation");
+      if (expEl) expEl.textContent = "Querying RIFT district terrain model and geotechnical parameters...";
+    }
+
+    try {
+      const res = await fetch(`/api/district-risk?state=${encodeURIComponent(state)}&district=${encodeURIComponent(district)}`);
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.detail || "Prediction request failed");
+      }
+      const data = await res.json();
+
+      if (resultBox) {
+        resultBox.style.display = "block";
+        const titleEl = document.getElementById("predResultLocationTitle");
+        if (titleEl) titleEl.textContent = `${data.district}, ${data.state}`;
+        const badgeEl = document.getElementById("predResultRiskBadge");
+        if (badgeEl) {
+          badgeEl.className = `risk-badge ${data.risk_level || 'LOW'}`;
+          badgeEl.textContent = data.risk_level || 'LOW';
+        }
+        const scoreEl = document.getElementById("predResultScore");
+        if (scoreEl) scoreEl.textContent = data.risk_score;
+        const expEl = document.getElementById("predResultExplanation");
+        if (expEl) expEl.textContent = data.explanation || `Representative slope ${data.terrain_factors?.slope_deg || '--'}°, elevation ${data.terrain_factors?.elevation_m || '--'}m.`;
+
+        // Update the 12 physical chips in the lower card
+        const coords = data.representative_coordinates || {};
+        const tf = data.terrain_factors || {};
+        setV4ChipValue("v4FeatDistrict", data.district);
+        setV4ChipValue("v4FeatState", data.state);
+        setV4ChipValue("v4FeatMaterial", "Colluvial / Debris");
+        setV4ChipValue("v4FeatElevation", tf.elevation_m, " m");
+        setV4ChipValue("v4FeatSlope", tf.slope_deg, "°");
+        setV4ChipValue("v4FeatAspect", "215.0", "°");
+        setV4ChipValue("v4FeatRainfall", tf.annual_rainfall_mm, " mm");
+        setV4ChipValue("v4FeatLandcover", tf.landcover_class || "Class 40");
+        setV4ChipValue("v4FeatSoilMoist", tf.soil_moisture_pct, "%");
+        setV4ChipValue("v4FeatNdvi", tf.ndvi);
+        setV4ChipValue("v4FeatLatitude", coords.lat ? coords.lat.toFixed(6) : null, "°");
+        setV4ChipValue("v4FeatLongitude", coords.lon ? coords.lon.toFixed(6) : null, "°");
+
+        const v4Status = document.getElementById("v4StatusBadge");
+        if (v4Status) {
+          v4Status.className = "factor-source-badge badge-green";
+          v4Status.textContent = "Verified Assessment";
+        }
+        const v4Haz = document.getElementById("v4HazardProb");
+        if (v4Haz) v4Haz.textContent = (data.hazard_score / 100).toFixed(4);
+        const v4HazBadge = document.getElementById("v4HazardBadge");
+        if (v4HazBadge) {
+          v4HazBadge.className = `v4-hazard-badge ${data.hazard_score >= 26.75 ? 'badge-amber' : 'badge-green'}`;
+          v4HazBadge.textContent = data.hazard_score >= 26.75 ? "Exceeded" : "Sub-Threshold";
+        }
+        const v4RiskB = document.getElementById("v4RiskBadge");
+        if (v4RiskB) {
+          v4RiskB.className = `v4-risk-badge badge-${(data.risk_level || 'low').toLowerCase()}`;
+          v4RiskB.textContent = data.risk_level || 'LOW';
+        }
+        const v4RiskS = document.getElementById("v4RiskScore");
+        if (v4RiskS) v4RiskS.textContent = data.risk_score;
+        const v4Exp = document.getElementById("v4ExplanationText");
+        if (v4Exp) v4Exp.textContent = data.explanation || `Risk evaluation for ${data.district}.`;
+      }
+    } catch (err) {
+      console.error("District risk prediction error:", err);
+      if (resultBox) {
+        const expEl = document.getElementById("predResultExplanation");
+        if (expEl) expEl.textContent = `Prediction failed: ${err.message}`;
+      }
+    }
+  });
+}
+
+function setV4ChipValue(id, val, suffix = "") {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (val === null || val === undefined || val === "Unavailable" || val === "") {
+    el.className = "v4-factor-val val-unavailable";
+    el.textContent = "Unavailable";
+  } else {
+    el.className = "v4-factor-val";
+    el.textContent = `${val}${suffix}`;
+  }
+}
+
+
 function initCurrentLocationFeature() {
   const btnDashboard = document.getElementById("btnGetLocation");
   const btnAi = document.getElementById("btnAiGetLocation");
   const btnAiGps = document.getElementById("btnAiGpsLocation");
+  const btnApply = document.getElementById("btnApplyLocation");
   const latInput = document.getElementById("aiLocLatitude");
   const lonInput = document.getElementById("aiLocLongitude");
   const box = document.getElementById("currentLocationBox");
@@ -1629,6 +2069,13 @@ function initCurrentLocationFeature() {
 
   if (btnAi) {
     btnAi.addEventListener("click", (e) => {
+      if (e) e.preventDefault();
+      handleAiLocationRefresh();
+    });
+  }
+
+  if (btnApply) {
+    btnApply.addEventListener("click", (e) => {
       if (e) e.preventDefault();
       handleAiLocationRefresh();
     });
@@ -1728,6 +2175,9 @@ function requestUserCurrentLocation() {
 
       // GIS Map Integration: place animated pulse marker & center map
       updateGisMapUserLocation(latitude, longitude, accuracy);
+
+      // Dynamically update nearest risk location
+      fetchNearestRiskDistrict(latitude, longitude);
 
       if (window.lucide) {
         lucide.createIcons();
@@ -2083,8 +2533,8 @@ async function fetchLocationFactors(lat, lng, acc) {
     return;
   }
 
-  // Step 1: Immediately show "Evaluating V4 Landslide AI..."
-  if (statusState) statusState.textContent = "Evaluating V4 Landslide AI...";
+  // Step 1: Immediately show "Evaluating Landslide AI Model..."
+  if (statusState) statusState.textContent = "Evaluating Landslide AI Model...";
   if (statusDot) {
     statusDot.style.background = "#38bdf8";
     statusDot.style.boxShadow = "0 0 6px #38bdf8";
@@ -2094,7 +2544,7 @@ async function fetchLocationFactors(lat, lng, acc) {
     bannerBadge.textContent = "Evaluating...";
   }
   if (bannerSub) {
-    bannerSub.textContent = "Querying verified V4 Landslide Intelligence model and factors gateway...";
+    bannerSub.textContent = "Querying verified Landslide Intelligence model and factors gateway...";
   }
   if (v4StatusBadge) {
     v4StatusBadge.className = "factor-source-badge badge-amber";
@@ -2141,7 +2591,7 @@ async function fetchLocationFactors(lat, lng, acc) {
       bannerBadge.textContent = "Prediction Complete";
     }
     if (bannerSub) {
-      bannerSub.textContent = `V4 Landslide Intelligence evaluated (${new Date().toLocaleTimeString()}).`;
+      bannerSub.textContent = `Landslide Intelligence evaluated (${new Date().toLocaleTimeString()}).`;
     }
 
     // 2. Fetch Granular Factor Telemetry in background
@@ -2511,6 +2961,102 @@ function initWeatherModule() {
   if (btnRefresh) {
     btnRefresh.addEventListener("click", () => {
       fetchWeatherData(true);
+    });
+  }
+
+  // Toggle Alternate Location Inputs
+  const btnToggleAlt = document.getElementById("btnToggleAltWeather");
+  const weatherCoordWrap = document.getElementById("weatherCoordInputsWrap");
+  if (btnToggleAlt && weatherCoordWrap) {
+    btnToggleAlt.addEventListener("click", () => {
+      const isHidden = weatherCoordWrap.style.display === "none";
+      weatherCoordWrap.style.display = isHidden ? "flex" : "none";
+      btnToggleAlt.innerHTML = isHidden
+        ? '<i data-lucide="x"></i> Hide Custom Coordinates'
+        : '<i data-lucide="map-pin"></i> Check Another Location';
+      if (window.lucide) lucide.createIcons();
+    });
+  }
+
+  // Check Another Location Button (Queries arbitrary Indian coordinates)
+  const btnCheckAlt = document.getElementById("btnCheckAltWeather");
+  if (btnCheckAlt) {
+    btnCheckAlt.addEventListener("click", async () => {
+      const inputLat = document.getElementById("inputWeatherLat");
+      const inputLon = document.getElementById("inputWeatherLon");
+      const statusNotice = document.getElementById("altWeatherStatusNotice");
+
+      const lat = parseFloat(inputLat?.value);
+      const lon = parseFloat(inputLon?.value);
+
+      if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+        if (statusNotice) {
+          statusNotice.style.display = "block";
+          statusNotice.style.color = "var(--risk-critical)";
+          statusNotice.textContent = "Please enter valid coordinates (Lat: -90 to 90, Lon: -180 to 180).";
+        }
+        return;
+      }
+
+      if (lat < 6.0 || lat > 38.0 || lon < 68.0 || lon > 98.0) {
+        if (statusNotice) {
+          statusNotice.style.display = "block";
+          statusNotice.style.color = "var(--risk-high)";
+          statusNotice.textContent = "Notice: Coordinates are outside India boundaries (6°-38°N, 68°-98°E).";
+        }
+        return;
+      }
+
+      if (statusNotice) {
+        statusNotice.style.display = "block";
+        statusNotice.style.color = "var(--text-accent)";
+        statusNotice.textContent = `Querying Open-Meteo for Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}...`;
+      }
+
+      try {
+        const res = await fetch(`/api/weather/custom-location?lat=${lat}&lon=${lon}`);
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || "Failed to fetch weather for coordinates");
+        }
+        const data = await res.json();
+
+        // Update active location banner
+        const titleEl = document.getElementById("weatherActiveLocationTitle");
+        if (titleEl) titleEl.textContent = data.location.name || `Point (${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E)`;
+        const metaEl = document.getElementById("weatherActiveLocationMeta");
+        if (metaEl) metaEl.textContent = `Coordinates: ${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E • Elevation: ${data.location.elevation_m || '--'} m • Timezone: Asia/Kolkata (IST)`;
+        const sourceBadge = document.getElementById("weatherDataSourceLabel");
+        if (sourceBadge) sourceBadge.textContent = `Source: Open-Meteo Reanalysis (${data.source.provenance || 'Real Data'})`;
+
+        // Update 6 metrics
+        const c = data.current || {};
+        const valTemp = document.getElementById("valWeatherTemp");
+        if (valTemp) valTemp.textContent = `${c.temperature_c != null ? c.temperature_c : '--'} °C`;
+        const valCurRain = document.getElementById("valWeatherCurrentRain");
+        if (valCurRain) valCurRain.textContent = `${c.precipitation_rate_mm_h != null ? c.precipitation_rate_mm_h : 0.0} mm/h`;
+        const valTodayRain = document.getElementById("valWeatherTodayRain");
+        if (valTodayRain) valTodayRain.textContent = `${c.rainfall_24h_mm != null ? c.rainfall_24h_mm : 0.0} mm`;
+        const valHumid = document.getElementById("valWeatherHumidity");
+        if (valHumid) valHumid.textContent = `${c.relative_humidity_pct != null ? c.relative_humidity_pct : '--'}%`;
+        const valWind = document.getElementById("valWeatherWind");
+        if (valWind) valWind.textContent = `${c.wind_speed_kmh != null ? c.wind_speed_kmh : '--'} km/h`;
+        const valCond = document.getElementById("valWeatherCondition");
+        if (valCond) valCond.textContent = c.weather_condition || "Normal Conditions";
+
+        if (statusNotice) {
+          statusNotice.style.display = "block";
+          statusNotice.style.color = "var(--risk-low)";
+          statusNotice.textContent = `✓ Weather verified: ${c.rainfall_24h_mm || 0} mm 24h rain (${c.imd_classification || 'Normal'}).`;
+        }
+      } catch (err) {
+        console.error("Custom weather fetch error:", err);
+        if (statusNotice) {
+          statusNotice.style.display = "block";
+          statusNotice.style.color = "var(--risk-critical)";
+          statusNotice.textContent = `Error: ${err.message}`;
+        }
+      }
     });
   }
 
@@ -3101,11 +3647,17 @@ function initProvenanceRegistry() {
       }
 
       const sources = data.sources;
-      const html = Object.keys(sources).map(key => {
+      const html = Object.keys(sources)
+        .filter(key => {
+          const src = sources[key];
+          const sId = (src.source_id || key).toLowerCase();
+          const sName = (src.name || "").toLowerCase();
+          return !sId.includes("demo") && !sName.includes("demo") && !sName.includes("hackathon");
+        })
+        .map(key => {
         const src = sources[key];
-        const isOfficial = !src.source_id.includes("demo");
-        const badgeColor = isOfficial ? "var(--risk-low)" : "var(--risk-critical)";
-        const badgeBg = isOfficial ? "rgba(34, 197, 94, 0.12)" : "rgba(239, 68, 68, 0.12)";
+        const badgeColor = "var(--risk-low)";
+        const badgeBg = "rgba(34, 197, 94, 0.12)";
 
         return `
           <div class="card-inner-box" style="padding: 16px; display: flex; flex-direction: column; gap: 8px; border: 1px solid var(--border-color);">

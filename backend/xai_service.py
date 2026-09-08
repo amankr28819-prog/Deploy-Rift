@@ -34,20 +34,21 @@ def get_global_feature_importance() -> List[Dict[str, Any]]:
 def evaluate_landslide_simulation(
     rainfall_24h: float,
     soil_saturation_pct: float,
-    slope_deg: float
+    slope_deg: float,
+    elevation_m: float = 1200.0,
+    vegetation_cover_pct: float = 65.0
 ) -> Dict[str, Any]:
     """
-    Physics-based geotechnical scenario evaluation.
-    Combines:
-    - Gravitational driving shear stress: tau_d = gamma * h * sin(theta) * cos(theta)
-    - Effective resisting shear strength: tau_r = c' + (sigma_n - u) * tan(phi')
-      where pore water pressure u increases with soil saturation.
-    - Transient orographic precipitation triggering threshold (IMD 64.5 mm / 115.5 mm).
+    Physics-based geotechnical scenario evaluation with five environmental factors:
+    1. 24h Precipitation (IMD trigger thresholds: 64.5 mm / 115.5 mm)
+    2. Soil Saturation / Pore-Water Pressure (effective normal stress reduction)
+    3. Slope Angle (gravitational driving shear stress vs friction angle)
+    4. Elevation (gravitational potential energy, relief energy, and weathering)
+    5. Vegetation / Land Cover (root network tensile cohesion and evapotranspiration)
     
     Returns scenario risk probability, physical factor contributions, and clear sandbox label.
     """
     # 1. Slope stress factor (0 - 100)
-    # Slopes < 15° have very low failure risk; 25°-45° are critical Himalayan colluvium angles.
     if slope_deg <= 10:
         slope_factor = slope_deg * 1.5
     elif slope_deg <= 30:
@@ -55,11 +56,10 @@ def evaluate_landslide_simulation(
     elif slope_deg <= 48:
         slope_factor = 60 + (slope_deg - 30) * 2.0
     else:
-        # Extreme cliffs (> 48°) often experience rockfall or lack deep soil overburden
         slope_factor = max(40, 96 - (slope_deg - 48) * 1.5)
+    slope_factor = min(100.0, max(0.0, slope_factor))
 
     # 2. Pore-water pressure / soil saturation factor (0 - 100)
-    # Below 40% saturation, capillary cohesion resists movement. Above 70%, pore pressure spikes.
     if soil_saturation_pct <= 40:
         moisture_factor = soil_saturation_pct * 0.5
     elif soil_saturation_pct <= 75:
@@ -69,11 +69,6 @@ def evaluate_landslide_simulation(
     moisture_factor = min(100.0, max(0.0, moisture_factor))
 
     # 3. 24-hour Precipitation triggering factor (0 - 100)
-    # Calibrated against IMD thresholds:
-    # < 35 mm: light/moderate
-    # 64.5 mm: IMD Heavy Rainfall alert threshold
-    # 115.5 mm: IMD Very Heavy Rainfall
-    # >= 204.4 mm: IMD Extremely Heavy Rainfall
     if rainfall_24h < 15:
         rain_factor = rainfall_24h * 1.0
     elif rainfall_24h < 64.5:
@@ -84,11 +79,41 @@ def evaluate_landslide_simulation(
         rain_factor = 80 + min(20.0, (rainfall_24h - 115.5) * 0.25)
     rain_factor = min(100.0, max(0.0, rain_factor))
 
-    # Interaction coupling: Rainfall creates rapid pore pressure buildup on steep slopes
-    interaction = (slope_factor / 100.0) * (moisture_factor / 100.0) * (rain_factor / 100.0) * 18.0
+    # 4. Elevation relief & weathering factor (0 - 100)
+    # Higher elevation in Himalayan/NER terrain increases weathering, relief energy, and orographic effects
+    if elevation_m <= 300:
+        elevation_factor = max(5.0, (elevation_m / 300.0) * 20.0)
+    elif elevation_m <= 1500:
+        elevation_factor = 20.0 + ((elevation_m - 300.0) / 1200.0) * 40.0
+    elif elevation_m <= 3000:
+        elevation_factor = 60.0 + ((elevation_m - 1500.0) / 1500.0) * 28.0
+    else:
+        elevation_factor = min(98.0, 88.0 + ((elevation_m - 3000.0) / 1000.0) * 10.0)
+    elevation_factor = min(100.0, max(0.0, elevation_factor))
+
+    # 5. Vegetation / Root Cohesion Vulnerability (0 - 100)
+    # High vegetation cover adds root cohesion cr (10-25 kPa); barren/degraded slopes have high failure vulnerability
+    veg_vulnerability = max(0.0, min(100.0, 100.0 - vegetation_cover_pct))
+    if vegetation_cover_pct >= 75:
+        veg_factor = (100.0 - vegetation_cover_pct) * 0.6  # Strong root cohesion dampens risk
+    elif vegetation_cover_pct >= 40:
+        veg_factor = 15.0 + (75.0 - vegetation_cover_pct) * 1.0
+    else:
+        veg_factor = 50.0 + (40.0 - vegetation_cover_pct) * 1.25  # Severe loss of root anchorage
+    veg_factor = min(100.0, max(0.0, veg_factor))
+
+    # Interaction coupling: Rainfall + steep slope + saturated soil + degraded vegetation
+    interaction = (slope_factor / 100.0) * (moisture_factor / 100.0) * (rain_factor / 100.0) * (veg_factor / 100.0) * 16.0
 
     # Composite scenario probability
-    raw_prob = (slope_factor * 0.38) + (moisture_factor * 0.32) + (rain_factor * 0.30) + interaction
+    raw_prob = (
+        (slope_factor * 0.30) +
+        (moisture_factor * 0.25) +
+        (rain_factor * 0.25) +
+        (elevation_factor * 0.10) +
+        (veg_factor * 0.10) +
+        interaction
+    )
     prob = int(min(98, max(4, round(raw_prob))))
 
     # Risk classification
@@ -102,13 +127,15 @@ def evaluate_landslide_simulation(
         level = "LOW"
 
     # Normalize contributions to 100%
-    total_weights = slope_factor + moisture_factor + rain_factor
+    total_weights = slope_factor + moisture_factor + rain_factor + elevation_factor + veg_factor
     if total_weights > 0:
         c_slope = round((slope_factor / total_weights) * 100, 1)
         c_moist = round((moisture_factor / total_weights) * 100, 1)
         c_rain = round((rain_factor / total_weights) * 100, 1)
+        c_elev = round((elevation_factor / total_weights) * 100, 1)
+        c_veg = round((veg_factor / total_weights) * 100, 1)
     else:
-        c_slope, c_moist, c_rain = 33.3, 33.3, 33.4
+        c_slope, c_moist, c_rain, c_elev, c_veg = 20.0, 20.0, 20.0, 20.0, 20.0
 
     # Physical explanation
     reasons = []
@@ -125,9 +152,19 @@ def evaluate_landslide_simulation(
         reasons.append(f"Low soil saturation ({soil_saturation_pct}%) preserves matric suction cohesion.")
 
     if rainfall_24h >= 64.5:
-        reasons.append(f"24h precipitation ({rainfall_24h} mm) exceeds IMD heavy rainfall threshold (&ge;64.5 mm), acting as an active dynamic trigger.")
+        reasons.append(f"24h precipitation ({rainfall_24h} mm) exceeds IMD heavy rainfall threshold (>=64.5 mm), acting as an active dynamic trigger.")
     else:
         reasons.append(f"24h precipitation ({rainfall_24h} mm) remains below critical IMD trigger threshold.")
+
+    if elevation_m >= 1800:
+        reasons.append(f"High elevation ({elevation_m:.0f} m) increases relief energy and freeze-thaw weathering susceptibility.")
+    else:
+        reasons.append(f"Elevation ({elevation_m:.0f} m) represents lower relief energy.")
+
+    if vegetation_cover_pct <= 35:
+        reasons.append(f"Sparse vegetation cover ({vegetation_cover_pct}%) offers minimal root tensile cohesion to resist shallow shear failure.")
+    else:
+        reasons.append(f"Substantial vegetation canopy ({vegetation_cover_pct}%) provides root anchorage reinforcement.")
 
     return {
         "probability": prob,
@@ -137,12 +174,16 @@ def evaluate_landslide_simulation(
         "scenario_inputs": {
             "rainfall_24h_mm": rainfall_24h,
             "soil_saturation_pct": soil_saturation_pct,
-            "slope_deg": slope_deg
+            "slope_deg": slope_deg,
+            "elevation_m": elevation_m,
+            "vegetation_cover_pct": vegetation_cover_pct
         },
         "contributingFactors": {
             "Slope Gravitational Stress": c_slope,
             "Pore-Water Saturation Pressure": c_moist,
-            "Precipitation Dynamic Trigger": c_rain
+            "Precipitation Dynamic Trigger": c_rain,
+            "Elevation Relief Energy": c_elev,
+            "Vegetation / Root Cover Deficit": c_veg
         },
         "explanation": " ".join(reasons),
         "note": "Interactive Synthetic Simulation Sandbox — Hypothetical stress test, not a real-time observation or forecast.",
@@ -150,6 +191,6 @@ def evaluate_landslide_simulation(
             source_id="demo_simulation",
             data_type="Synthetic Scenario Simulation",
             status="simulation",
-            notes="Physical geotechnical formula based on Mohr-Coulomb slope stability and IMD rainfall alert thresholds."
+            notes="Physical geotechnical formula based on Mohr-Coulomb slope stability, root reinforcement, and IMD rainfall alert thresholds."
         )
     }

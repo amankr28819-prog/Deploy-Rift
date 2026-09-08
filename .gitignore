@@ -23,3 +23,6 @@ Thumbs.db
 __pycache__/
 *.pyc
 repomix-output.xml
+
+package-lock.json
+

@@ -167,18 +167,6 @@ SOURCE_REGISTRY: Dict[str, Dict[str, Any]] = {
         "update_frequency": "Real-time user submissions",
         "description": "Ground observations of slope cracks, mudslides, and road blockages."
     },
-    "demo_simulation": {
-        "source_id": "demo_simulation",
-        "name": "RIFT Hackathon Demonstration Engine",
-        "url": "/api/demo/trigger",
-        "dataset": "Synthetic Monsoonal Deluge Scenario (SIH PS 26001)",
-        "source_type": "Simulation / Synthetic Scenario",
-        "data_type": "Demo Data / Synthetic Simulation",
-        "license": "Demonstration Only",
-        "attribution": "RIFT Disaster Simulation Sandbox",
-        "update_frequency": "Step-by-step test scenario",
-        "description": "Synthetic multi-stage progression from baseline rainfall to severe slope collapse for drills, training, and presentations."
-    },
     "infrastructure_reference": {
         "source_id": "infrastructure_reference",
         "name": "National Highways Authority of India (NHAI) & OpenStreetMap",

@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NER-SAFE — AI-Based Landslide Risk Early Warning System (SIH 2026 PS 26001)</title>
+  <title>RIFT — AI-Based Landslide Risk Early Warning System</title>
+  
+  <link rel="icon" type="image/png" href="/static/favicon.png">
   
   <!-- Inter Font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,14 +29,13 @@
   <!-- Top Command Center Header -->
   <header class="app-header">
     <div class="brand-section">
-      <div class="brand-logo">N</div>
+      <div class="brand-logo">
+        <img src="/static/img/rift-logo.png" alt="RIFT Logo" class="brand-logo-img">
+      </div>
       <div class="brand-title-wrap">
-        <h1>
-          NER-SAFE 
-          <span class="badge-mdoner">MDoNER • SIH 2026 PS 26001</span>
-        </h1>
+        <h1>RIFT</h1>
         <div class="brand-sub" id="brandTagline">
-          North Eastern Region – Smart AI-based Forecasting & Emergency System
+          AI Landslide Prevention & Early Warning System
         </div>
       </div>
     </div>
@@ -55,21 +56,13 @@
 
       <!-- Language Selector -->
       <select class="select-control" id="langSelector">
-        <option value="English">🇬🇧 English</option>
-        <option value="Hindi">🇮🇳 हिंदी (Hindi)</option>
-        <option value="Assamese">🇮🇳 অসমীয়া (Assamese)</option>
-        <option value="Bengali">🇮🇳 বাংলা (Bengali)</option>
-        <option value="Mizo">🇮🇳 Mizo</option>
-        <option value="Khasi">🇮🇳 Khasi</option>
-        <option value="Manipuri">🇮🇳 ꯃꯅꯤꯄꯨꯔꯤ (Manipuri)</option>
-      </select>
-
-      <!-- User Role Selector -->
-      <select class="select-control" id="roleSelector">
-        <option value="ADMIN">🛡️ Admin Command</option>
-        <option value="RESPONSE_OFFICER" selected>🚨 Response Officer</option>
-        <option value="FIELD_OFFICER">📱 Field Officer</option>
-        <option value="CITIZEN">👤 Citizen</option>
+        <option value="English">English</option>
+        <option value="Hindi">हिंदी</option>
+        <option value="Assamese">অসমীয়া</option>
+        <option value="Bengali">বাংলা</option>
+        <option value="Mizo">Mizo</option>
+        <option value="Khasi">Khasi</option>
+        <option value="Manipuri">ꯃꯅꯤꯄꯨꯔꯤ</option>
       </select>
     </div>
   </header>
@@ -124,14 +117,6 @@
         <i data-lucide="list-ordered" class="nav-icon"></i>
         <span class="nav-text">Response Priority</span>
       </a>
-      <a class="nav-item" data-target="historical-analysis">
-        <i data-lucide="line-chart" class="nav-icon"></i>
-        <span class="nav-text">Historical Analysis</span>
-      </a>
-      <a class="nav-item" data-target="satellite-monitoring">
-        <i data-lucide="satellite" class="nav-icon"></i>
-        <span class="nav-text">Satellite Monitor</span>
-      </a>
       <a class="nav-item" data-target="risk-simulator">
         <i data-lucide="sliders" class="nav-icon"></i>
         <span class="nav-text">Landslide Simulator</span>
@@ -152,67 +137,67 @@
           <!-- Left Metric Panel -->
           <div class="card" style="display: flex; flex-direction: column; gap: 14px;">
             <div class="card-header">
-              <div class="card-title"><i data-lucide="activity"></i> NER Risk Overview</div>
-              <span class="provenance-badge-demo" style="font-size: 9px; padding: 2px 6px; border-radius: 4px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-weight: 600;">NER Reference Profile</span>
+              <div class="card-title"><i data-lucide="activity"></i> RIFT Risk Overview</div>
+              <span class="provenance-badge-demo" style="font-size: 9px; padding: 2px 6px; border-radius: 4px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-weight: 600;">NER Real-Data Registry</span>
             </div>
             
             <div style="display: flex; flex-direction: column; gap: 10px;">
-              <div class="card-inner-box" style="padding: 12px;">
-                <div style="font-size: 11px; color: var(--text-secondary);">Highest Active Risk Zone</div>
-                <div style="font-size: 16px; font-weight: 700; color: var(--risk-critical); margin-top: 2px;">Aizawl District (Mizoram)</div>
-                <div style="display: flex; gap: 8px; margin-top: 6px;">
-                  <span class="risk-badge CRITICAL">CRITICAL (87%)</span>
-                  <span style="font-size: 11px; color: var(--text-muted); align-self: center;">165mm / 24h</span>
+              <!-- Nearest Risk Location Card -->
+              <div class="card-inner-box" id="nearestRiskCard" style="padding: 12px; border-left: 3px solid var(--text-accent);">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <div style="font-size: 11px; color: var(--text-secondary); text-transform: uppercase; font-weight: 700;">Nearest Risk Location</div>
+                  <span class="risk-badge LOW" id="nearestRiskBadge" style="font-size: 9px; padding: 2px 6px;">READY</span>
                 </div>
+                <div style="font-size: 15px; font-weight: 700; color: var(--text-primary); margin-top: 4px;" id="nearestRiskLocationName">Awaiting location detection</div>
+                <div style="font-size: 12px; font-weight: 600; color: var(--text-accent); margin-top: 2px;" id="nearestRiskDistance">—</div>
               </div>
 
               <div class="card-inner-box" style="padding: 12px;">
                 <div style="font-size: 11px; color: var(--text-secondary);">Monitored NER Locations</div>
-                <div style="font-size: 22px; font-weight: 800; color: var(--text-accent);">8 States • 42 Districts</div>
+                <div style="font-size: 22px; font-weight: 800; color: var(--text-accent);">8 States • 78 Districts</div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Survey of India official boundaries & GSI NLSM coverage</div>
               </div>
 
               <div class="card-inner-box" style="padding: 12px;">
                 <div style="font-size: 11px; color: var(--text-secondary);">Critical Highways at Risk</div>
                 <div style="font-size: 15px; font-weight: 700; color: var(--risk-high);">NH-6, NH-10, NH-27</div>
-                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Potential blockage affecting 88,000 citizens</div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Arterial lifeline monitoring for slope failure</div>
               </div>
             </div>
 
             <!-- Priority Incident Ranking Quick View -->
             <div style="margin-top: auto;">
               <div style="font-size: 12px; font-weight: 700; margin-bottom: 8px; color: var(--text-secondary);">Response Priority Top Item</div>
-              <div class="priority-item">
+              <div class="priority-item" id="dashPriorityTopItem">
                 <div>
-                  <div style="font-size: 12px; font-weight: 700;">#1 Aizawl Ridge Sector</div>
-                  <div style="font-size: 10px; color: var(--text-secondary);">Pop: 14,200 • Hospital Lifeline</div>
+                  <div style="font-size: 12px; font-weight: 700;" id="dashPriorityTopTitle">#1 Loading Priorities...</div>
+                  <div style="font-size: 10px; color: var(--text-secondary);" id="dashPriorityTopSub">Ranked dynamically by actual risk points</div>
                 </div>
-                <span class="risk-badge CRITICAL">CRITICAL</span>
+                <span class="risk-badge HIGH" id="dashPriorityTopBadge">ACTIVE</span>
               </div>
             </div>
           </div>
 
-          <!-- Center Visual GIS Map -->
-          <div class="dashboard-map-container">
+          <!-- Center Visual GIS Map (Expanded) -->
+          <div class="dashboard-map-container" style="grid-column: 2 / -1; position: relative;">
             <div id="gisMap"></div>
-            
-            <!-- Map Layer Toggles -->
-            <div class="map-layer-controls">
-              <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">GIS Layers</div>
-              <label class="layer-toggle-item">
-                <input type="checkbox" id="layerLandslideRisk" checked> Landslide Risk Zones
-              </label>
-              <label class="layer-toggle-item">
-                <input type="checkbox" id="layerRainfall" checked> Rainfall Saturation
-              </label>
-              <label class="layer-toggle-item">
-                <input type="checkbox" id="layerSlope" checked> Steep Slope (&gt;30°)
-              </label>
-              <label class="layer-toggle-item">
-                <input type="checkbox" id="layerInfrastructure" checked> Highways & Bridges
-              </label>
-              <label class="layer-toggle-item">
-                <input type="checkbox" id="layerFieldReports" checked> Field Reports
-              </label>
+
+            <!-- Dashboard Basemap Selector: Street / Satellite / Terrain -->
+            <div class="dash-basemap-control-wrap" style="position: absolute; top: 12px; right: 12px; z-index: 900;">
+              <div class="gis-segmented-control" role="group" aria-label="Dashboard Map Basemap Layers">
+                <button type="button" class="gis-segment-btn dash-layer-btn active" data-layer="street" id="dashBtnStreet" title="OpenStreetMap Street View">
+                  <i data-lucide="map" class="gis-segment-icon"></i>
+                  <span class="gis-segment-label">Street</span>
+                </button>
+                <button type="button" class="gis-segment-btn dash-layer-btn" data-layer="satellite" id="dashBtnSatellite" title="ESRI High-Resolution World Satellite Imagery">
+                  <i data-lucide="satellite" class="gis-segment-icon"></i>
+                  <span class="gis-segment-label">Satellite</span>
+                </button>
+                <button type="button" class="gis-segment-btn dash-layer-btn" data-layer="terrain" id="dashBtnTerrain" title="ESRI Topographic Relief & Contours">
+                  <i data-lucide="mountain" class="gis-segment-icon"></i>
+                  <span class="gis-segment-label">Terrain</span>
+                </button>
+              </div>
             </div>
 
             <!-- Current Location Map Control HUD -->
@@ -237,53 +222,20 @@
                   <span class="loc-coord-label">Longitude</span>
                   <span class="loc-coord-value" id="locLngValue">—</span>
                 </div>
-                <div class="loc-coord-row">
-                  <span class="loc-coord-label">Accuracy</span>
-                  <span class="loc-coord-value" id="locAccValue">—</span>
-                </div>
               </div>
 
               <div class="loc-message-box" id="locMessageBox" style="display: none;"></div>
 
               <div class="loc-action-row">
                 <button type="button" class="btn-get-location" id="btnGetLocation">
-                  <i data-lucide="locate-fixed" id="btnLocateIcon"></i>
-                  <span id="btnLocateText">Get My Location</span>
+                  <i data-lucide="refresh-cw" id="btnLocateIcon"></i>
+                  <span id="btnLocateText">Refresh Location</span>
                 </button>
               </div>
             </div>
           </div>
 
-          <!-- Right Details & Live Alerts Panel -->
-          <div class="card" style="display: flex; flex-direction: column; gap: 12px; overflow-y: auto;">
-            <div class="card-header">
-              <div class="card-title"><i data-lucide="bell-ring"></i> Live Emergency Feed</div>
-              <span class="risk-badge LOW" id="activeAlertCountBadge">0 ACTIVE ALERTS • MONITORED</span>
-            </div>
 
-            <div id="dashboardLiveAlertsFeed" style="display: flex; flex-direction: column; gap: 10px;">
-              <!-- Populated by JS -->
-            </div>
-          </div>
-
-          <!-- Bottom Analytics Bar -->
-          <div class="card" style="grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
-            <div>
-              <div class="card-title" style="margin-bottom: 8px;"><i data-lucide="cloud-rain"></i> 24h Rainfall Anomaly</div>
-              <div style="font-size: 20px; font-weight: 800; color: var(--val-highlight);">165 mm <span style="font-size: 12px; color: var(--danger-text); font-weight: 600;">(+42% above normal)</span></div>
-              <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Heavy rainfall triggering slope saturation</div>
-            </div>
-            <div>
-              <div class="card-title" style="margin-bottom: 8px;"><i data-lucide="git-commit"></i> Soil Saturation Index</div>
-              <div style="font-size: 20px; font-weight: 800; color: var(--danger-text);">82% <span style="font-size: 12px; color: var(--danger-text); font-weight: 600;">(CRITICAL THRESHOLD)</span></div>
-              <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Liquefaction potential high across 37° slopes</div>
-            </div>
-            <div>
-              <div class="card-title" style="margin-bottom: 8px;"><i data-lucide="wifi-off"></i> Low-Network Field Support</div>
-              <div style="font-size: 20px; font-weight: 800; color: var(--success-text);">PWA Offline Cache Active</div>
-              <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">0 pending reports in local queue</div>
-            </div>
-          </div>
 
         </div>
       </section>
@@ -298,10 +250,6 @@
                 <i data-lucide="map" style="color: var(--risk-high);"></i>
                 <span>Interactive NER GIS Landslide Risk Map</span>
               </div>
-              <span class="badge-pill" id="gisModelBadge" style="font-size: 11px; background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); padding: 3px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px;">
-                <i data-lucide="cpu" style="width: 12px; height: 12px;"></i>
-                <span id="gisModelBadgeText">Model: RIFT V2 Physical</span>
-              </span>
               <span class="badge-pill" id="gisDistrictsBadge" style="font-size: 11px; background: rgba(34, 197, 94, 0.12); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); padding: 3px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px;">
                 <i data-lucide="layers" style="width: 12px; height: 12px;"></i>
                 <span id="gisDistrictsCountText">78 Districts</span>
@@ -588,15 +536,24 @@
                   <label for="aiLocLatitude" style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 6px; cursor: pointer;">
                     Latitude:
                   </label>
-                  <input type="number" step="any" min="-90" max="90" class="form-input ai-coord-input" id="aiLocLatitude" placeholder="e.g. 30.764350" autocomplete="off">
+                  <input type="number" step="any" min="-90" max="90" class="form-input ai-coord-input" id="aiLocLatitude" placeholder="e.g. 26.150000" autocomplete="off">
                 </div>
 
                 <div class="card-inner-box" style="padding: 12px 16px;">
                   <label for="aiLocLongitude" style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 6px; cursor: pointer;">
                     Longitude:
                   </label>
-                  <input type="number" step="any" min="-180" max="180" class="form-input ai-coord-input" id="aiLocLongitude" placeholder="e.g. 76.781719" autocomplete="off">
+                  <input type="number" step="any" min="-180" max="180" class="form-input ai-coord-input" id="aiLocLongitude" placeholder="e.g. 92.900000" autocomplete="off">
                 </div>
+              </div>
+
+              <!-- Apply Coordinates Action Button -->
+              <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <button type="button" class="btn-primary" id="btnApplyLocation" style="display: inline-flex; align-items: center; gap: 8px; padding: 10px 22px; font-size: 13px; font-weight: 700; cursor: pointer;">
+                  <i data-lucide="check-circle"></i>
+                  <span>Apply Location</span>
+                </button>
+                <span style="font-size: 11px; color: var(--text-muted);">Coordinates will be validated (-90° to +90°, -180° to +180°) and applied across all monitoring modules.</span>
               </div>
 
               <!-- Error Message Alert Container -->
@@ -604,23 +561,124 @@
             </div>
           </div>
 
+          <!-- State & District AI Risk Prediction Module -->
+          <div class="card" id="districtPredictionCard" style="width: 100%;">
+            <div class="card-header" style="flex-wrap: wrap; gap: 10px;">
+              <div class="card-title">
+                <i data-lucide="map-pin" style="color: var(--risk-high);"></i>
+                <span>District Landslide Risk Assessment</span>
+              </div>
+              <span class="factor-source-badge" style="background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3);">
+                8 Northeast States • 78 Official Districts
+              </span>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 16px; padding: 4px 0;">
+              <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.5; margin: 0;">
+                Select an administrative state and district to retrieve evaluated physical landslide hazard from the validated RIFT intelligence engine.
+              </p>
+
+              <!-- State & District Dropdown Row -->
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; align-items: flex-end;">
+                <div class="card-inner-box" style="padding: 12px 16px;">
+                  <label for="predStateSelect" style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 6px;">
+                    State:
+                  </label>
+                  <select class="select-control" id="predStateSelect" style="width: 100%; height: 38px; font-weight: 600;">
+                    <option value="">Select NER State</option>
+                    <option value="Arunachal Pradesh">Arunachal Pradesh</option>
+                    <option value="Assam">Assam</option>
+                    <option value="Manipur">Manipur</option>
+                    <option value="Meghalaya">Meghalaya</option>
+                    <option value="Mizoram">Mizoram</option>
+                    <option value="Nagaland">Nagaland</option>
+                    <option value="Sikkim">Sikkim</option>
+                    <option value="Tripura">Tripura</option>
+                  </select>
+                </div>
+
+                <div class="card-inner-box" style="padding: 12px 16px;">
+                  <label for="predDistrictSelect" style="display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 6px;">
+                    District:
+                  </label>
+                  <select class="select-control" id="predDistrictSelect" style="width: 100%; height: 38px; font-weight: 600;" disabled>
+                    <option value="">Select State First</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Dedicated Factor Information Section (Displayed before prediction upon district selection) -->
+              <div id="districtFactorsPreviewBox" style="display: none; padding: 16px; border-radius: 8px; background: var(--bg-card-inner); border: 1px solid var(--border-color); margin-top: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px;">
+                  <div>
+                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px;">
+                      Selected Location & Verified Physical Risk Factors
+                    </div>
+                    <div style="font-size: 16px; font-weight: 800; color: var(--text-primary); margin-top: 2px;" id="factorPreviewLocationTitle">
+                      Select a District
+                    </div>
+                  </div>
+                  <span class="factor-source-badge badge-green" id="factorPreviewStatusBadge" style="font-size: 10px;">
+                    Verified Data
+                  </span>
+                </div>
+
+                <!-- Verified Factors Grid -->
+                <div id="factorPreviewGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px;">
+                  <!-- Populated by JS -->
+                </div>
+
+                <!-- Predict Risk Button Action -->
+                <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
+                  <button type="button" class="btn-primary" id="btnPredictDistrictRisk" style="display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 24px; height: 42px; font-size: 13px; font-weight: 700; cursor: pointer;">
+                    <i data-lucide="cpu"></i>
+                    <span>Predict Risk</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Prediction Result Banner -->
+              <div id="districtPredResultBox" style="display: none; padding: 16px; border-radius: 8px; background: var(--bg-card-inner); border: 1px solid var(--border-highlight); margin-top: 14px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;">
+                  <div>
+                    <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">
+                      Evaluated Landslide Risk Assessment
+                    </div>
+                    <div style="font-size: 24px; font-weight: 800; margin-top: 2px; display: flex; align-items: center; gap: 10px;">
+                      <span id="predResultLocationTitle">Location</span>
+                      <span class="risk-badge HIGH" id="predResultRiskBadge">HIGH</span>
+                    </div>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;" id="predResultExplanation">
+                      Representative physical factors evaluated.
+                    </div>
+                  </div>
+                  <div style="text-align: right;">
+                    <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Risk Score</div>
+                    <div style="font-size: 32px; font-weight: 800; color: var(--text-accent);" id="predResultScore">0.0</div>
+                    <div style="font-size: 10px; color: var(--text-muted);">out of 100 points</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Landslide Factor Information Section -->
           <div class="factors-dashboard-wrap" id="aiFactorsDashboardWrap">
             
-            <!-- V4 AI Landslide Intelligence Prediction Card -->
+            <!-- AI Landslide Intelligence Prediction Card -->
             <div class="card v4-ai-card" id="v4AiCard" style="width: 100%;">
               <div class="card-header" style="flex-wrap: wrap; gap: 10px;">
                 <div class="card-title">
                   <i data-lucide="brain-circuit" style="color: #38bdf8;"></i>
                   <span>AI Risk Prediction</span>
-                  <span class="v4-model-tag" id="v4ModelTag">V4 Intelligence</span>
+                  <span class="v4-model-tag" id="v4ModelTag">Physical AI Intelligence</span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                  <span class="factor-source-badge" id="v4PipelineBadge" title="Server-side XGBoost + OneHotEncoder pipeline">
-                    Pipeline: XGBoost + OHE
+                  <span class="factor-source-badge" id="v4PipelineBadge" title="Server-side validated pipeline">
+                    Pipeline: Machine Learning + Physical Rules
                   </span>
                   <span class="factor-source-badge badge-gray" id="v4ThresholdBadge">
-                    Threshold: 0.2675
+                    Decision Threshold: 0.2675
                   </span>
                   <span class="factor-source-badge badge-gray" id="v4StatusBadge">
                     Awaiting Location
@@ -671,12 +729,12 @@
                 </div>
               </div>
 
-              <!-- 12 Verified V4 Input Factors Grid -->
+              <!-- 12 Verified Physical Input Factors Grid -->
               <div class="v4-factors-section">
                 <div class="v4-section-header">
                   <div class="v4-section-title">
                     <i data-lucide="sliders" style="width: 14px; height: 14px; color: #38bdf8;"></i>
-                    12 Verified V4 Model Inputs
+                    12 Verified Physical Landslide Inputs
                   </div>
                   <span class="v4-policy-badge" title="Unknown environmental factors are never converted to zero">NA Policy: Strict Missing Isolation</span>
                 </div>
@@ -733,24 +791,15 @@
                 </div>
               </div>
 
-              <!-- V4 Explanation Signal Banner -->
+              <!-- Explanation Signal Banner -->
               <div class="v4-explanation-box" id="v4ExplanationBox">
                 <div class="v4-explanation-header">
                   <i data-lucide="info" style="width: 14px; height: 14px; color: #38bdf8;"></i>
-                  <span class="v4-explanation-title">V4 Explanation Signal (Rule-Based Criteria)</span>
+                  <span class="v4-explanation-title">Risk Assessment Explanation (Rule-Based Criteria)</span>
                 </div>
                 <div class="v4-explanation-text" id="v4ExplanationText">
                   Awaiting coordinates. Click "Refresh Location" or enter manual coordinates to assess location.
                 </div>
-              </div>
-
-              <!-- Recommended Actions Box -->
-              <div class="v4-actions-box" id="v4ActionsBox" style="display: none;">
-                <div class="v4-actions-header">
-                  <i data-lucide="shield-check" style="width: 14px; height: 14px; color: #22c55e;"></i>
-                  <span class="v4-actions-title">V4 Recommended Actions</span>
-                </div>
-                <ul class="v4-actions-list" id="v4ActionsList"></ul>
               </div>
 
             </div>
@@ -789,10 +838,6 @@
                   <div class="factor-item-row">
                     <span class="factor-item-label">Longitude</span>
                     <span class="factor-item-value" id="valFactorLon">—</span>
-                  </div>
-                  <div class="factor-item-row">
-                    <span class="factor-item-label">GPS Accuracy</span>
-                    <span class="factor-item-value" id="valFactorAcc">—</span>
                   </div>
                   <div class="factor-item-row">
                     <span class="factor-item-label">Status</span>
@@ -1176,18 +1221,29 @@
 
               <div class="weather-separator-line"></div>
 
-              <!-- Coordinate Inputs -->
+              <!-- Coordinate Inputs / Check Another Location -->
               <div class="weather-coords-group">
-                <div class="weather-coord-inputs">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <button type="button" class="btn-secondary" id="btnToggleAltWeather" style="padding: 8px 12px; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; height: 38px; white-space: nowrap;">
+                    <i data-lucide="map-pin"></i> Check Another Location
+                  </button>
+                </div>
+                <div class="weather-coord-inputs" id="weatherCoordInputsWrap" style="margin-top: 6px;">
                   <div class="weather-input-field coord-field">
-                    <label for="inputWeatherLat">Latitude</label>
+                    <label for="inputWeatherLat"><i data-lucide="crosshair"></i> Latitude</label>
                     <input type="number" step="any" min="-90" max="90" class="weather-input-control" id="inputWeatherLat" placeholder="25.5788" value="25.5788">
                   </div>
                   <div class="weather-input-field coord-field">
-                    <label for="inputWeatherLon">Longitude</label>
+                    <label for="inputWeatherLon"><i data-lucide="crosshair"></i> Longitude</label>
                     <input type="number" step="any" min="-180" max="180" class="weather-input-control" id="inputWeatherLon" placeholder="91.8933" value="91.8933">
                   </div>
+                  <div class="weather-input-field" style="align-self: flex-end;">
+                    <button type="button" class="btn-primary" id="btnCheckAltWeather" style="padding: 8px 14px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; height: 38px;">
+                      <i data-lucide="search"></i> Check Weather
+                    </button>
+                  </div>
                 </div>
+                <div id="altWeatherStatusNotice" style="font-size: 11px; color: var(--text-muted); margin-top: 4px; display: none;"></div>
               </div>
             </div>
 
@@ -1614,7 +1670,7 @@
       <section class="module-page" id="authority-dashboard">
         <div class="card">
           <div class="card-header" style="flex-wrap: wrap; gap: 10px;">
-            <div class="card-title"><i data-lucide="building-2"></i> MDoNER Disaster Authority Command Center</div>
+            <div class="card-title"><i data-lucide="building-2"></i> Disaster Authority Command Center</div>
             <span id="authorityStatusBadge" style="font-size: 10px; padding: 2px 8px; border-radius: 4px; background: rgba(34, 197, 94, 0.12); color: #22c55e; border: 1px solid rgba(34, 197, 94, 0.3); font-weight: 600;">ACTIVE REGIONAL AGGREGATION</span>
           </div>
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px;">
@@ -1671,8 +1727,21 @@
       <!-- MODULE 10: RESPONSE PRIORITY -->
       <section class="module-page" id="response-priority">
         <div class="card">
-          <div class="card-header">
-            <div class="card-title"><i data-lucide="list-ordered"></i> Smart Emergency Response Prioritization Matrix</div>
+          <div class="card-header" style="flex-wrap: wrap; gap: 12px;">
+            <div>
+              <div class="card-title"><i data-lucide="list-ordered"></i> Smart Emergency Response Prioritization Matrix</div>
+              <div style="font-size: 11px; color: var(--text-secondary); margin-top: 4px;">
+                Operational triage ranked dynamically across verified triggers, incidents, and evaluated regional district risk.
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span class="factor-source-badge badge-green" style="font-size: 10px;">
+                Dynamic Risk Ranking Active
+              </span>
+              <span class="factor-source-badge badge-gray" style="font-size: 10px;">
+                Strict Descending Order
+              </span>
+            </div>
           </div>
           <div class="priority-list" id="fullPriorityList">
             <!-- Populated by JS -->
@@ -1680,89 +1749,58 @@
         </div>
       </section>
 
-      <!-- MODULE 11: HISTORICAL ANALYSIS -->
-      <section class="module-page" id="historical-analysis">
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title"><i data-lucide="line-chart"></i> Historical NER Landslide & Rainfall Trends (2021 - 2025)</div>
-            <span style="font-size: 10px; padding: 2px 8px; border-radius: 4px; background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-weight: 600;">GSI Inventory & Open-Meteo Reanalysis</span>
-          </div>
-          <canvas id="historicalChart" height="150"></canvas>
-          <div style="margin-top: 12px; font-size: 11px; color: var(--text-muted);">
-            📊 <b>Source Transparency:</b> Incident counts aggregated from Geological Survey of India (GSI) National Landslide Susceptibility Mapping (NLSM) database and Open-Meteo ERA5 Reanalysis archive.
-          </div>
-        </div>
-      </section>
-
-      <!-- MODULE 12: SATELLITE MONITORING -->
-      <section class="module-page" id="satellite-monitoring">
-        <div class="card">
-          <div class="card-header">
-            <div class="card-title"><i data-lucide="satellite"></i> Satellite Surface Deformation & Scar Detection</div>
-            <span style="font-size: 10px; padding: 2px 8px; border-radius: 4px; background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); font-weight: 600;">SAR Telemetry Unavailable</span>
-          </div>
-          
-          <div class="card-inner-box" style="padding: 24px; text-align: center; margin-bottom: 16px; border: 1px dashed var(--border-color);">
-            <div style="width: 54px; height: 54px; border-radius: 50%; background: rgba(56, 189, 248, 0.1); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
-              <i data-lucide="satellite-dish" style="width: 28px; height: 28px; color: #38bdf8;"></i>
-            </div>
-            <h3 style="font-size: 16px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px;">Live Sentinel-1 / ISRO SAR Telemetry Not Configured</h3>
-            <p style="font-size: 13px; color: var(--text-secondary); max-width: 680px; margin: 0 auto 16px; line-height: 1.5;">
-              In accordance with the <b>RIFT Global Real-Data & No-Fabrication Policy</b>, placeholder stock photographs and fabricated millimeter ground deformation values have been removed. Live interferometric SAR surface displacement analysis requires authenticated Copernicus Sentinel Hub or ISRO Bhuvan API credentials.
-            </p>
-            <div style="display: inline-flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
-              <button class="btn-primary" style="font-size: 12px; padding: 8px 16px;" onclick="document.querySelector('[data-target=\'gis-map-view\']').click(); switchBasemapLayer('satellite');">
-                <i data-lucide="layers"></i> View Verified Esri Satellite Basemap in GIS Map
-              </button>
-            </div>
-          </div>
-
-          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;">
-            <div class="card-inner-box" style="padding: 14px;">
-              <div style="font-size: 11px; color: var(--text-secondary);">Optical Aerial Basemap</div>
-              <div style="font-size: 15px; font-weight: 700; color: var(--risk-low); margin-top: 4px;">Available (Esri Imagery)</div>
-              <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">High-resolution static aerial composite active on GIS Risk Map.</div>
-            </div>
-            <div class="card-inner-box" style="padding: 14px;">
-              <div style="font-size: 11px; color: var(--text-secondary);">Interferometric SAR InSAR</div>
-              <div style="font-size: 15px; font-weight: 700; color: var(--text-muted); margin-top: 4px;">Unavailable</div>
-              <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Requires active Copernicus Sentinel-1 radar pipeline.</div>
-            </div>
-            <div class="card-inner-box" style="padding: 14px;">
-              <div style="font-size: 11px; color: var(--text-secondary);">Multi-Spectral Scar Scanner</div>
-              <div style="font-size: 15px; font-weight: 700; color: var(--text-muted); margin-top: 4px;">Unavailable</div>
-              <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Sentinel-2 dNDVI post-event scar detection offline.</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- MODULE 13: LANDSLIDE RISK SIMULATOR -->
+      <!-- MODULE 11: LANDSLIDE RISK SIMULATOR -->
       <section class="module-page" id="risk-simulator">
         <div class="card">
           <div class="card-header">
             <div class="card-title"><i data-lucide="sliders"></i> Interactive Monsoonal Landslide Risk Simulator</div>
-            <span style="font-size: 10px; padding: 2px 8px; border-radius: 4px; background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-weight: 600;">Interactive Synthetic Simulation Sandbox</span>
+            <span style="font-size: 10px; padding: 2px 8px; border-radius: 4px; background: rgba(56, 189, 248, 0.12); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-weight: 600;">Geotechnical Physics & Machine Learning Sandbox</span>
           </div>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-            <div style="display: flex; flex-direction: column; gap: 16px;">
+          <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 24px; align-items: start;">
+            <div style="display: flex; flex-direction: column; gap: 14px;">
               <div>
-                <label class="form-label" id="simRainfallLabel">Rainfall: 165 mm</label>
-                <input type="range" min="10" max="300" value="165" style="width: 100%;" id="simRainfallSlider">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label class="form-label" id="simRainfallLabel" style="margin-bottom: 0;">24h Rainfall: 165 mm</label>
+                  <span style="font-size: 11px; color: var(--text-muted);">Triggering Hydro Force</span>
+                </div>
+                <input type="range" min="10" max="300" value="165" step="1" style="width: 100%;" id="simRainfallSlider">
               </div>
               <div>
-                <label class="form-label" id="simSoilLabel">Soil Saturation: 82%</label>
-                <input type="range" min="10" max="100" value="82" style="width: 100%;" id="simSoilSlider">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label class="form-label" id="simSoilLabel" style="margin-bottom: 0;">Soil Saturation: 82%</label>
+                  <span style="font-size: 11px; color: var(--text-muted);">Pore-Water Pressure</span>
+                </div>
+                <input type="range" min="10" max="100" value="82" step="1" style="width: 100%;" id="simSoilSlider">
               </div>
               <div>
-                <label class="form-label" id="simSlopeLabel">Slope: 37°</label>
-                <input type="range" min="5" max="60" value="37" style="width: 100%;" id="simSlopeSlider">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label class="form-label" id="simSlopeLabel" style="margin-bottom: 0;">Slope Angle: 37°</label>
+                  <span style="font-size: 11px; color: var(--text-muted);">Gravitational Shear Stress</span>
+                </div>
+                <input type="range" min="5" max="60" value="37" step="1" style="width: 100%;" id="simSlopeSlider">
+              </div>
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label class="form-label" id="simElevationLabel" style="margin-bottom: 0;">Elevation: 1,450 m</label>
+                  <span style="font-size: 11px; color: var(--text-muted);">Topographic Relief (100 - 4,000m)</span>
+                </div>
+                <input type="range" min="100" max="4000" value="1450" step="50" style="width: 100%;" id="simElevationSlider">
+              </div>
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                  <label class="form-label" id="simVegetationLabel" style="margin-bottom: 0;">Vegetation Canopy Cover: 35%</label>
+                  <span style="font-size: 11px; color: var(--text-muted);">Root Cohesion Shear Resistance (0 - 100%)</span>
+                </div>
+                <input type="range" min="0" max="100" value="35" step="1" style="width: 100%;" id="simVegetationSlider">
               </div>
             </div>
-            <div class="card-inner-box" style="padding: 20px; text-align: center; display: flex; flex-direction: column; justify-content: center;">
-              <div style="font-size: 12px; color: var(--text-secondary);">Simulated Risk Gauge (Synthetic Drill)</div>
-              <div style="font-size: 48px; font-weight: 800; color: var(--risk-critical);" id="simProbResult">87.0%</div>
-              <div style="margin-top: 6px;" id="simBadgeWrap"><span class="risk-badge CRITICAL">CRITICAL RISK</span></div>
+            <div class="card-inner-box" style="padding: 24px; text-align: center; display: flex; flex-direction: column; justify-content: center; min-height: 280px;">
+              <div style="font-size: 12px; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Simulated Failure Probability</div>
+              <div style="font-size: 48px; font-weight: 800; color: var(--risk-critical); margin: 8px 0;" id="simProbResult">87.0%</div>
+              <div id="simBadgeWrap"><span class="risk-badge CRITICAL">CRITICAL RISK</span></div>
+              <div style="margin-top: 14px; font-size: 11px; color: var(--text-muted); line-height: 1.5;" id="simEvaluationDetails">
+                Calculated dynamically via geotechnical equilibrium model & Random Forest surrogate.
+              </div>
             </div>
           </div>
         </div>
@@ -1777,7 +1815,7 @@
           </div>
 
           <p style="font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 20px;">
-            The RIFT / NER-SAFE platform implements an uncompromising, verifiable real-data integrity policy. All physical terrain parameters, meteorological inputs, and administrative geometries are sourced exclusively from authentic scientific databases and government agencies. Where live telemetry is not connected, it is honestly identified as <b>Unavailable</b>.
+            The RIFT platform implements an uncompromising, verifiable real-data integrity policy. All physical terrain parameters, meteorological inputs, and administrative geometries are sourced exclusively from authentic scientific databases and government agencies. Where live telemetry is not connected, it is honestly identified as <b>Unavailable</b>.
           </p>
 
           <div id="provenanceSourcesContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px;">

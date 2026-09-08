@@ -129,27 +129,40 @@ body {
 }
 
 .brand-logo {
-  width: 38px;
-  height: 38px;
-  background: linear-gradient(135deg, #0369a1, #0284c7);
-  border-radius: 8px;
+  height: 44px;
+  width: auto;
+  min-width: 36px;
+  max-width: 52px;
+  background: transparent;
+  border-radius: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 800;
-  font-size: 20px;
-  color: #fff;
-  box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
+  box-shadow: none;
+  overflow: visible;
+  flex-shrink: 0;
+}
+
+.brand-logo-img {
+  height: 44px;
+  width: auto;
+  max-height: 44px;
+  max-width: 48px;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.45));
 }
 
 .brand-title-wrap h1 {
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 1px;
   color: var(--text-primary);
   display: flex;
   align-items: center;
   gap: 8px;
+  line-height: 1.1;
+  margin: 0;
 }
 
 .badge-mdoner {
@@ -386,19 +399,20 @@ body {
 /* Grid Layouts */
 .grid-dashboard {
   display: grid;
-  grid-template-columns: 280px 1fr 340px;
-  grid-template-rows: 1fr 220px;
+  grid-template-columns: 360px 1fr;
+  grid-template-rows: 1fr;
   gap: 16px;
   height: 100%;
 }
 
 .dashboard-map-container {
-  grid-column: 2 / 3;
+  grid-column: 2 / -1;
   grid-row: 1 / 2;
   position: relative;
   border-radius: 10px;
   overflow: hidden;
   border: 1px solid var(--border-color);
+  min-height: 520px;
 }
 
 #gisMap {
@@ -468,7 +482,7 @@ body {
 .priority-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 
 .priority-item {
@@ -481,6 +495,26 @@ body {
   justify-content: space-between;
   align-items: center;
   color: var(--text-primary);
+}
+
+.priority-card {
+  background-color: var(--bg-card-inner);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.priority-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--border-highlight);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+}
+
+.priority-rank-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: 'Inter', monospace, sans-serif;
 }
 
 /* Reusable inner card/metric subcard box */
@@ -3491,4 +3525,201 @@ body.light-theme .gis-status-content {
   color: #0f172a;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
+
+@media (max-width: 768px) {
+  .brand-logo {
+    height: 36px;
+    max-width: 42px;
+  }
+  .brand-logo-img {
+    height: 36px;
+    max-height: 36px;
+    max-width: 40px;
+  }
+}
+
+/* -------------------------------------------------------------
+ * REDESIGNED CLICKED MAP REGION POPUP (Requirement 20)
+ * ------------------------------------------------------------- */
+.leaflet-popup.rift-custom-popup .leaflet-popup-content-wrapper {
+  background: var(--bg-card, #0f172a);
+  color: var(--text-primary, #f8fafc);
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55), 0 0 15px rgba(56, 189, 248, 0.12);
+  padding: 0;
+  overflow: hidden;
+}
+
+.leaflet-popup.rift-custom-popup .leaflet-popup-content {
+  margin: 0;
+  line-height: 1.4;
+}
+
+.leaflet-popup.rift-custom-popup .leaflet-popup-tip {
+  background: var(--bg-card, #0f172a);
+  border: 1px solid var(--border-color, #334155);
+}
+
+.leaflet-popup.rift-custom-popup a.leaflet-popup-close-button {
+  color: var(--text-muted, #94a3b8);
+  padding: 6px 8px;
+  font-size: 16px;
+  top: 6px;
+  right: 6px;
+}
+
+.leaflet-popup.rift-custom-popup a.leaflet-popup-close-button:hover {
+  color: #ffffff;
+}
+
+.rift-map-region-popup {
+  padding: 14px 16px;
+  font-family: 'Inter', -apple-system, sans-serif;
+  min-width: 260px;
+  max-width: 320px;
+}
+
+.popup-region-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-color, #1e293b);
+}
+
+.popup-region-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-primary, #f8fafc);
+  letter-spacing: 0.3px;
+}
+
+.popup-factors-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.popup-factor-box {
+  background: var(--bg-card-inner, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--border-color, #1e293b);
+  border-radius: 6px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.popup-factor-label {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted, #94a3b8);
+  letter-spacing: 0.4px;
+}
+
+.popup-factor-val {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary, #f8fafc);
+}
+
+.popup-corridor-row {
+  font-size: 11px;
+  margin-bottom: 10px;
+  background: var(--bg-card-inner, rgba(255, 255, 255, 0.03));
+  border-radius: 6px;
+  padding: 6px 8px;
+  display: flex;
+  gap: 6px;
+}
+
+.popup-corridor-label {
+  color: var(--text-muted, #94a3b8);
+  font-weight: 600;
+}
+
+.popup-corridor-val {
+  color: var(--risk-high, #f97316);
+  font-weight: 700;
+}
+
+.popup-action-directive {
+  background: var(--bg-card-inner, rgba(255, 255, 255, 0.04));
+  border-left: 3px solid #f97316;
+  border-radius: 0 6px 6px 0;
+  padding: 8px 10px;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.popup-action-header {
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted, #94a3b8);
+  letter-spacing: 0.4px;
+  margin-bottom: 2px;
+}
+
+.popup-action-body {
+  color: var(--text-secondary, #cbd5e1);
+  font-weight: 500;
+}
+
+/* Factor Preview Chips in AI Predictor (Requirement 13D) */
+.factor-preview-chip {
+  background: var(--bg-card, #0f172a);
+  border: 1px solid var(--border-color, #334155);
+  border-radius: 6px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  transition: border-color 0.15s ease;
+}
+
+.factor-preview-chip:hover {
+  border-color: var(--text-accent, #38bdf8);
+}
+
+.factor-chip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.factor-chip-name {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted, #94a3b8);
+  letter-spacing: 0.5px;
+}
+
+.factor-chip-val {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-primary, #f8fafc);
+  margin-top: 2px;
+}
+
+.factor-chip-source {
+  font-size: 9.5px;
+  color: var(--text-secondary, #64748b);
+  margin-top: 2px;
+  line-height: 1.2;
+}
+
+.factor-chip-unavail .factor-chip-val {
+  color: var(--text-muted, #64748b);
+  font-style: italic;
+  font-weight: 600;
+}
+
+
 
