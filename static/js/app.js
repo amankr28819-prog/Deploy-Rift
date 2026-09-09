@@ -3246,6 +3246,9 @@ async function fetchWeatherData(force = false) {
       const msg = document.getElementById("weatherErrorMessage");
       if (msg) msg.textContent = coordResult.error;
     }
+    const currentIcon = document.getElementById("iconWeatherRefresh");
+    if (currentIcon) currentIcon.style.animation = "";
+    if (refreshIcon) refreshIcon.style.animation = "";
     return;
   }
 
@@ -3253,7 +3256,8 @@ async function fetchWeatherData(force = false) {
   currentWeatherLat = coordResult.lat;
   currentWeatherLon = coordResult.lon;
 
-  if (refreshIcon) refreshIcon.style.animation = "spin 1s linear infinite";
+  const currentRefreshIcon = document.getElementById("iconWeatherRefresh") || refreshIcon;
+  if (currentRefreshIcon) currentRefreshIcon.style.animation = "spin 1s linear infinite";
 
   try {
     const state = currentWeatherState;
@@ -3287,7 +3291,9 @@ async function fetchWeatherData(force = false) {
       if (msg) msg.textContent = `Meteorological service unavailable: ${err.message}. Retrying or check connection.`;
     }
   } finally {
-    if (refreshIcon) refreshIcon.style.animation = "";
+    const activeIcon = document.getElementById("iconWeatherRefresh");
+    if (activeIcon) activeIcon.style.animation = "";
+    if (refreshIcon && refreshIcon !== activeIcon) refreshIcon.style.animation = "";
   }
 }
 
