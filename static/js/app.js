@@ -64,6 +64,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Register PWA Service Worker for Offline Field Support
   initServiceWorker();
+
+  // Window resize listener for responsive Leaflet map sizing
+  let resizeTimeout = null;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      if (gisMap) gisMap.invalidateSize({ pan: false });
+      if (fullGisMap) fullGisMap.invalidateSize({ pan: false });
+    }, 150);
+  });
 });
 
 /* -------------------------------------------------------------
@@ -213,6 +223,21 @@ function initGisMap() {
     if (currentUserLocation) {
       updateGisMapUserLocation(currentUserLocation.latitude, currentUserLocation.longitude, currentUserLocation.accuracy);
     }
+
+    // Attach ResizeObserver to guarantee dashboard map renders on mobile/responsive changes
+    if (window.ResizeObserver && mapElement) {
+      const dashRo = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.contentRect.width > 50 && entry.contentRect.height > 50 && gisMap) {
+            gisMap.invalidateSize({ pan: false });
+          }
+        }
+      });
+      dashRo.observe(mapElement);
+    }
+    setTimeout(() => {
+      if (gisMap) gisMap.invalidateSize({ pan: false });
+    }, 200);
   }
 
   // 2. Full Screen GIS Risk Map View
@@ -2714,22 +2739,22 @@ function updateGisMapUserLocation(lat, lng, accuracy) {
 /* =============================================================
  * THEME SYSTEM (LIGHT / DARK MODE)
  * ============================================================= */
-let activeTheme = "dark";
+let activeTheme = "light";
 
 function initTheme() {
   const savedTheme = localStorage.getItem("ner_safe_theme");
   const btnToggle = document.getElementById("btnThemeToggle");
   
-  if (savedTheme === "light") {
-    document.body.classList.add("light-theme");
-    document.documentElement.setAttribute("data-theme", "light");
-    document.body.setAttribute("data-theme", "light");
-    activeTheme = "light";
-  } else {
+  if (savedTheme === "dark") {
     document.body.classList.remove("light-theme");
     document.documentElement.setAttribute("data-theme", "dark");
     document.body.setAttribute("data-theme", "dark");
     activeTheme = "dark";
+  } else {
+    document.body.classList.add("light-theme");
+    document.documentElement.setAttribute("data-theme", "light");
+    document.body.setAttribute("data-theme", "light");
+    activeTheme = "light";
   }
   
   updateThemeButtonUI();
@@ -2898,102 +2923,6 @@ function initWeatherModule() {
   if (btnRefresh) {
     btnRefresh.addEventListener("click", () => {
       fetchWeatherData(true);
-    });
-  }
-
-  // Toggle Alternate Location Inputs
-  const btnToggleAlt = document.getElementById("btnToggleAltWeather");
-  const weatherCoordWrap = document.getElementById("weatherCoordInputsWrap");
-  if (btnToggleAlt && weatherCoordWrap) {
-    btnToggleAlt.addEventListener("click", () => {
-      const isHidden = weatherCoordWrap.style.display === "none";
-      weatherCoordWrap.style.display = isHidden ? "flex" : "none";
-      btnToggleAlt.innerHTML = isHidden
-        ? '<i data-lucide="x"></i> Hide Custom Coordinates'
-        : '<i data-lucide="map-pin"></i> Check Another Location';
-      if (window.lucide) lucide.createIcons();
-    });
-  }
-
-  // Check Another Location Button (Queries arbitrary Indian coordinates)
-  const btnCheckAlt = document.getElementById("btnCheckAltWeather");
-  if (btnCheckAlt) {
-    btnCheckAlt.addEventListener("click", async () => {
-      const inputLat = document.getElementById("inputWeatherLat");
-      const inputLon = document.getElementById("inputWeatherLon");
-      const statusNotice = document.getElementById("altWeatherStatusNotice");
-
-      const lat = parseFloat(inputLat?.value);
-      const lon = parseFloat(inputLon?.value);
-
-      if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
-        if (statusNotice) {
-          statusNotice.style.display = "block";
-          statusNotice.style.color = "var(--risk-critical)";
-          statusNotice.textContent = "Please enter valid coordinates (Lat: -90 to 90, Lon: -180 to 180).";
-        }
-        return;
-      }
-
-      if (lat < 6.0 || lat > 38.0 || lon < 68.0 || lon > 98.0) {
-        if (statusNotice) {
-          statusNotice.style.display = "block";
-          statusNotice.style.color = "var(--risk-high)";
-          statusNotice.textContent = "Notice: Coordinates are outside India boundaries (6°-38°N, 68°-98°E).";
-        }
-        return;
-      }
-
-      if (statusNotice) {
-        statusNotice.style.display = "block";
-        statusNotice.style.color = "var(--text-accent)";
-        statusNotice.textContent = `Querying Open-Meteo for Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}...`;
-      }
-
-      try {
-        const res = await fetch(`/api/weather/custom-location?lat=${lat}&lon=${lon}`);
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.detail || "Failed to fetch weather for coordinates");
-        }
-        const data = await res.json();
-
-        // Update active location banner
-        const titleEl = document.getElementById("weatherActiveLocationTitle");
-        if (titleEl) titleEl.textContent = data.location.name || `Point (${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E)`;
-        const metaEl = document.getElementById("weatherActiveLocationMeta");
-        if (metaEl) metaEl.textContent = `Coordinates: ${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E • Elevation: ${data.location.elevation_m || '--'} m • Timezone: Asia/Kolkata (IST)`;
-        const sourceBadge = document.getElementById("weatherDataSourceLabel");
-        if (sourceBadge) sourceBadge.textContent = `Source: Open-Meteo Reanalysis (${data.source.provenance || 'Real Data'})`;
-
-        // Update 6 metrics
-        const c = data.current || {};
-        const valTemp = document.getElementById("valWeatherTemp");
-        if (valTemp) valTemp.textContent = `${c.temperature_c != null ? c.temperature_c : '--'} °C`;
-        const valCurRain = document.getElementById("valWeatherCurrentRain");
-        if (valCurRain) valCurRain.textContent = `${c.precipitation_rate_mm_h != null ? c.precipitation_rate_mm_h : 0.0} mm/h`;
-        const valTodayRain = document.getElementById("valWeatherTodayRain");
-        if (valTodayRain) valTodayRain.textContent = `${c.rainfall_24h_mm != null ? c.rainfall_24h_mm : 0.0} mm`;
-        const valHumid = document.getElementById("valWeatherHumidity");
-        if (valHumid) valHumid.textContent = `${c.relative_humidity_pct != null ? c.relative_humidity_pct : '--'}%`;
-        const valWind = document.getElementById("valWeatherWind");
-        if (valWind) valWind.textContent = `${c.wind_speed_kmh != null ? c.wind_speed_kmh : '--'} km/h`;
-        const valCond = document.getElementById("valWeatherCondition");
-        if (valCond) valCond.textContent = c.weather_condition || "Normal Conditions";
-
-        if (statusNotice) {
-          statusNotice.style.display = "block";
-          statusNotice.style.color = "var(--risk-low)";
-          statusNotice.textContent = `✓ Weather verified: ${c.rainfall_24h_mm || 0} mm 24h rain (${c.imd_classification || 'Normal'}).`;
-        }
-      } catch (err) {
-        console.error("Custom weather fetch error:", err);
-        if (statusNotice) {
-          statusNotice.style.display = "block";
-          statusNotice.style.color = "var(--risk-critical)";
-          statusNotice.textContent = `Error: ${err.message}`;
-        }
-      }
     });
   }
 

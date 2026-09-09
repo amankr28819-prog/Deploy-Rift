@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,7 +24,7 @@
   <!-- Custom CSS -->
   <link rel="stylesheet" href="/static/css/styles.css">
 </head>
-<body>
+<body class="light-theme" data-theme="light">
 
   <!-- Top Command Center Header -->
   <header class="app-header">
@@ -49,9 +49,9 @@
 
       <!-- Theme Toggle Button -->
       <button class="btn-theme-toggle" id="btnThemeToggle" aria-label="Toggle Light or Dark Mode" title="Toggle Light / Dark Mode">
-        <i data-lucide="sun" id="iconThemeSun"></i>
-        <i data-lucide="moon" id="iconThemeMoon" style="display: none;"></i>
-        <span id="labelThemeMode">Light</span>
+        <i data-lucide="sun" id="iconThemeSun" style="display: none;"></i>
+        <i data-lucide="moon" id="iconThemeMoon" style="display: inline-block;"></i>
+        <span id="labelThemeMode">Dark</span>
       </button>
 
       <!-- Language Selector -->
@@ -180,7 +180,7 @@
           </div>
 
           <!-- Center Visual GIS Map (Expanded) -->
-          <div class="dashboard-map-container" style="grid-column: 2 / -1; position: relative;">
+          <div class="dashboard-map-container" id="dashboardMapContainer">
             <div id="gisMap"></div>
 
             <!-- Dashboard Basemap Selector: Street / Satellite / Terrain -->
@@ -630,79 +630,6 @@
                 </div>
               </div>
 
-              <!-- 12 Verified Physical Input Factors Grid -->
-              <div class="v4-factors-section">
-                <div class="v4-section-header">
-                  <div class="v4-section-title">
-                    <i data-lucide="sliders" style="width: 14px; height: 14px; color: #38bdf8;"></i>
-                    12 Verified Physical Landslide Inputs
-                  </div>
-                  <span class="v4-policy-badge" title="Unknown environmental factors are never converted to zero">NA Policy: Strict Missing Isolation</span>
-                </div>
-
-                <div class="v4-factors-grid" id="v4FactorsGrid">
-                  <div class="v4-factor-chip">
-                    <span class="v4-factor-name">1. District</span>
-                    <span class="v4-factor-val" id="v4FeatDistrict">—</span>
-                  </div>
-                  <div class="v4-factor-chip">
-                    <span class="v4-factor-name">2. State</span>
-                    <span class="v4-factor-val" id="v4FeatState">—</span>
-                  </div>
-                  <div class="v4-factor-chip">
-                    <span class="v4-factor-name">3. Material Involved</span>
-                    <span class="v4-factor-val val-unavailable" id="v4FeatMaterial">Unavailable</span>
-                  </div>
-                  <div class="v4-factor-chip">
-                    <span class="v4-factor-name">4. Elevation</span>
-                    <span class="v4-factor-val" id="v4FeatElevation">—</span>
-                  </div>
-                  <div class="v4-factor-chip">
-                    <span class="v4-factor-name">5. Slope</span>
-                    <span class="v4-factor-val val-unavailable" id="v4FeatSlope">Unavailable</span>
-                  </div>
-                  <div class="v4-factor-chip">
-                    <span class="v4-factor-name">6. Aspect</span>
-                    <span class="v4-factor-val val-unavailable" id="v4FeatAspect">Unavailable</span>
-                  </div>
-                  <div class="v4-factor-chip">
-                    <span class="v4-factor-name">7. Annual Rainfall</span>
-                    <span class="v4-factor-val val-unavailable" id="v4FeatRainfall">Unavailable</span>
-                  </div>
-                  <div class="v4-factor-chip">
-                    <span class="v4-factor-name">8. Land Cover</span>
-                    <span class="v4-factor-val val-unavailable" id="v4FeatLandcover">Unavailable</span>
-                  </div>
-                  <div class="v4-factor-chip">
-                    <span class="v4-factor-name">9. Soil Moisture</span>
-                    <span class="v4-factor-val" id="v4FeatSoilMoist">—</span>
-                  </div>
-                  <div class="v4-factor-chip">
-                    <span class="v4-factor-name">10. NDVI</span>
-                    <span class="v4-factor-val val-unavailable" id="v4FeatNdvi">Unavailable</span>
-                  </div>
-                  <div class="v4-factor-chip">
-                    <span class="v4-factor-name">11. Latitude</span>
-                    <span class="v4-factor-val" id="v4FeatLatitude">—</span>
-                  </div>
-                  <div class="v4-factor-chip">
-                    <span class="v4-factor-name">12. Longitude</span>
-                    <span class="v4-factor-val" id="v4FeatLongitude">—</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Explanation Signal Banner -->
-              <div class="v4-explanation-box" id="v4ExplanationBox">
-                <div class="v4-explanation-header">
-                  <i data-lucide="info" style="width: 14px; height: 14px; color: #38bdf8;"></i>
-                  <span class="v4-explanation-title">Risk Assessment Explanation (Rule-Based Criteria)</span>
-                </div>
-                <div class="v4-explanation-text" id="v4ExplanationText">
-                  Awaiting coordinates. Click "Refresh Location" or enter manual coordinates to assess location.
-                </div>
-              </div>
-
             </div>
 
             <!-- Notice Banner -->
@@ -1118,33 +1045,6 @@
                     <option value="">-- Loading Districts... --</option>
                   </select>
                 </div>
-              </div>
-
-              <div class="weather-separator-line"></div>
-
-              <!-- Coordinate Inputs / Check Another Location -->
-              <div class="weather-coords-group">
-                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                  <button type="button" class="btn-secondary" id="btnToggleAltWeather" style="padding: 8px 12px; font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; height: 38px; white-space: nowrap;">
-                    <i data-lucide="map-pin"></i> Check Another Location
-                  </button>
-                </div>
-                <div class="weather-coord-inputs" id="weatherCoordInputsWrap" style="margin-top: 6px;">
-                  <div class="weather-input-field coord-field">
-                    <label for="inputWeatherLat"><i data-lucide="crosshair"></i> Latitude</label>
-                    <input type="number" step="any" min="-90" max="90" class="weather-input-control" id="inputWeatherLat" placeholder="25.5788" value="25.5788">
-                  </div>
-                  <div class="weather-input-field coord-field">
-                    <label for="inputWeatherLon"><i data-lucide="crosshair"></i> Longitude</label>
-                    <input type="number" step="any" min="-180" max="180" class="weather-input-control" id="inputWeatherLon" placeholder="91.8933" value="91.8933">
-                  </div>
-                  <div class="weather-input-field" style="align-self: flex-end;">
-                    <button type="button" class="btn-primary" id="btnCheckAltWeather" style="padding: 8px 14px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; height: 38px;">
-                      <i data-lucide="search"></i> Check Weather
-                    </button>
-                  </div>
-                </div>
-                <div id="altWeatherStatusNotice" style="font-size: 11px; color: var(--text-muted); margin-top: 4px; display: none;"></div>
               </div>
             </div>
 

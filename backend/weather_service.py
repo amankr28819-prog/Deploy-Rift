@@ -47,6 +47,8 @@ WMO_WEATHER_CODES: Dict[int, str] = {
 # In-memory weather cache: (round(lat, 3), round(lon, 3)) -> (timestamp, data)
 WEATHER_CACHE: Dict[tuple, tuple[float, Dict[str, Any]]] = {}
 CACHE_TTL_SECONDS = 300  # 5 minutes cache for current weather
+STATE_COMPARISON_CACHE: Dict[str, tuple[float, List[Dict[str, Any]]]] = {}
+STATE_CACHE_TTL_SECONDS = 600  # 10 minutes cache for district comparison
 
 
 def get_weather_condition(code: Optional[int]) -> str:
@@ -80,8 +82,25 @@ def fetch_comprehensive_weather(lat: float, lon: float, force_refresh: bool = Fa
     )
     req = urllib.request.Request(url, headers={"User-Agent": "NERSAFE/1.0 (sih-ner-safe@gov.in)"})
 
-    with urllib.request.urlopen(req, timeout=9) as resp:
-        raw_data = json.loads(resp.read().decode("utf-8"))
+    raw_data = None
+    last_error = None
+    for attempt in range(2):
+        try:
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                raw_data = json.loads(resp.read().decode("utf-8"))
+            if raw_data:
+                break
+        except Exception as e:
+            last_error = e
+            if attempt == 0:
+                time.sleep(0.5)
+
+    if raw_data is None:
+        # Graceful fallback to last cached data if available
+        if cache_key in WEATHER_CACHE:
+            _, cached_data = WEATHER_CACHE[cache_key]
+            return cached_data
+        raise last_error
 
     current_raw = raw_data.get("current", {})
     daily_raw = raw_data.get("daily", {})
@@ -307,7 +326,15 @@ def fetch_state_district_comparison(state_name: str) -> List[Dict[str, Any]]:
     Limits to top 6 representative districts to avoid excessive external calls.
     Results are cached for high responsiveness.
     """
+    now_ts = time.time()
+    if state_name in STATE_COMPARISON_CACHE:
+        c_time, c_data = STATE_COMPARISON_CACHE[state_name]
+        if now_ts - c_time < STATE_CACHE_TTL_SECONDS:
+            return c_data
+
     from backend.northeast_data import DISTRICTS_DATA
+    import concurrent.futures
+
     dist_dict = DISTRICTS_DATA.get(state_name, {})
     if not dist_dict:
         return []
@@ -316,12 +343,11 @@ def fetch_state_district_comparison(state_name: str) -> List[Dict[str, Any]]:
     d_keys = list(dist_dict.keys())
     sample_keys = d_keys[:6] if len(d_keys) > 6 else d_keys
 
-    results = []
-    for d_name in sample_keys:
+    def fetch_single_district(d_name: str) -> Dict[str, Any]:
         info = dist_dict[d_name]
         try:
             w = fetch_comprehensive_weather(info["lat"], info["lon"])
-            results.append({
+            return {
                 "district": d_name,
                 "rainfall_7d": w["statistics"]["rainfall_7d"],
                 "total_7d_mm": w["statistics"]["rainfall_7d"],
@@ -330,9 +356,9 @@ def fetch_state_district_comparison(state_name: str) -> List[Dict[str, Any]]:
                 "temperature": w["current"]["temperature"],
                 "data_source": "Open-Meteo Historical/Reanalysis",
                 "available": True
-            })
+            }
         except Exception as e:
-            results.append({
+            return {
                 "district": d_name,
                 "rainfall_7d": None,
                 "total_7d_mm": None,
@@ -341,6 +367,10 @@ def fetch_state_district_comparison(state_name: str) -> List[Dict[str, Any]]:
                 "temperature": None,
                 "available": False,
                 "error": str(e)
-            })
+            }
 
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+        results = list(executor.map(fetch_single_district, sample_keys))
+
+    STATE_COMPARISON_CACHE[state_name] = (now_ts, results)
     return results
