@@ -255,6 +255,10 @@
                 <i data-lucide="layers" style="width: 12px; height: 12px;"></i>
                 <span id="gisDistrictsCountText">78 Districts</span>
               </span>
+              <span class="badge-pill" id="gisLastUpdatedBadge" style="font-size: 11px; background: var(--bg-surface-alt, rgba(100, 116, 139, 0.08)); color: var(--text-secondary, #64748b); border: 1px solid var(--border-color, #e2e8f0); padding: 3px 8px; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px;" title="Actual timestamp when the currently displayed GIS data was calculated/refreshed">
+                <i data-lucide="clock" style="width: 12px; height: 12px;"></i>
+                <span id="gisLastUpdatedText">Last Updated: Loading...</span>
+              </span>
             </div>
 
             <!-- Controls Toolbar -->
@@ -294,9 +298,9 @@
               </div>
 
               <!-- Refresh Button -->
-              <button type="button" class="btn-secondary" id="gisBtnRefresh" title="Refresh AI Landslide Risk Data" style="display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; height: 34px; font-size: 11.5px; font-weight: 600;">
+              <button type="button" class="btn-secondary" id="gisBtnRefresh" title="Recalculate and refresh live AI landslide risk across all NER districts" style="display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; height: 34px; font-size: 11.5px; font-weight: 600;">
                 <i data-lucide="refresh-cw" id="gisRefreshIcon" style="width: 13px; height: 13px;"></i>
-                <span>Refresh</span>
+                <span id="gisBtnRefreshText">Refresh Map</span>
               </button>
             </div>
           </div>
@@ -306,6 +310,12 @@
             <!-- Left: Interactive Map -->
             <div class="gis-map-wrapper">
               <div id="fullGisMap"></div>
+              
+              <!-- Floating Notification Toast -->
+              <div class="gis-toast-alert" id="gisToastAlert" style="display: none; position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(239, 68, 68, 0.94); color: #ffffff; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; box-shadow: 0 4px 14px rgba(0,0,0,0.3); backdrop-filter: blur(4px); pointer-events: none; align-items: center; gap: 8px; max-width: 90%; text-align: center;">
+                <i data-lucide="alert-triangle" style="width: 14px; height: 14px; flex-shrink: 0;"></i>
+                <span id="gisToastAlertMsg"></span>
+              </div>
               
               <!-- Map Loading & Error Status Overlay -->
               <div class="gis-map-status-overlay" id="gisMapStatusOverlay" style="display: none;">

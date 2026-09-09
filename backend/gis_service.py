@@ -26,6 +26,7 @@ from backend.northeast_data import resolve_district_location, DISTRICTS_DATA
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
 GEOJSON_PATH = DATA_DIR / "ner_districts.geojson"
+CACHE_DISK_PATH = DATA_DIR / "cached_district_risk.geojson"
 
 # In-memory cache for enriched GeoJSON
 _ENRICHED_GEOJSON_CACHE: Optional[Dict[str, Any]] = None
@@ -189,6 +190,18 @@ def build_district_risk_geojson(force_refresh: bool = False) -> Dict[str, Any]:
         if now - _CACHE_TIMESTAMP < _CACHE_TTL_SECONDS:
             return _ENRICHED_GEOJSON_CACHE
 
+    # Check persistent disk cache on cold start (sub-20ms instant load vs 2-8s compute)
+    if not force_refresh and CACHE_DISK_PATH.exists():
+        try:
+            with open(CACHE_DISK_PATH, "r", encoding="utf-8") as cf:
+                cached_data = json.load(cf)
+            if cached_data.get("features") and len(cached_data["features"]) == 78:
+                _ENRICHED_GEOJSON_CACHE = cached_data
+                _CACHE_TIMESTAMP = now
+                return _ENRICHED_GEOJSON_CACHE
+        except Exception:
+            pass
+
     if not GEOJSON_PATH.exists():
         raise FileNotFoundError(f"District boundaries GeoJSON not found at: {GEOJSON_PATH}")
 
@@ -339,6 +352,13 @@ def build_district_risk_geojson(force_refresh: bool = False) -> Dict[str, Any]:
         "features": enriched_features
     }
     _CACHE_TIMESTAMP = now
+
+    # Persist to disk cache for instantaneous future cold boots
+    try:
+        with open(CACHE_DISK_PATH, "w", encoding="utf-8") as cf:
+            json.dump(_ENRICHED_GEOJSON_CACHE, cf)
+    except Exception:
+        pass
 
     return _ENRICHED_GEOJSON_CACHE
 

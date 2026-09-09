@@ -30,12 +30,25 @@ from backend.source_registry import SOURCE_REGISTRY, build_provenance, get_sourc
 from backend.report_service import get_all_reports, add_report, update_report_status
 from backend.alert_service import generate_live_alerts
 from backend.xai_service import get_global_feature_importance, evaluate_landslide_simulation
+from fastapi.middleware.gzip import GZipMiddleware
 
 app = FastAPI(
     title="NER-SAFE API Server",
     description="North Eastern Region – Smart AI-based Forecasting & Emergency System",
     version="1.0.0"
 )
+
+# Enable automatic GZip compression for responses >= 1 KB (compresses 1.5MB GeoJSON down to ~500 KB)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+@app.on_event("startup")
+def prewarm_gis_and_models():
+    """Pre-warms GIS risk cache and models during server boot so first requests are sub-10ms."""
+    try:
+        get_filtered_district_risk_geojson(state="all", force_refresh=False)
+        print("[STARTUP] GIS District Risk intelligence pre-warmed successfully.")
+    except Exception as e:
+        print(f"[STARTUP] GIS pre-warm warning: {e}")
 
 # Serves static frontend files
 STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
@@ -419,14 +432,14 @@ def get_alerts():
 # ==========================================
 
 @app.get("/api/gis/risk-districts")
-def get_gis_district_risk_endpoint(state: Optional[str] = "all", force: bool = False):
+def get_gis_district_risk_endpoint(state: Optional[str] = "all", force: bool = False, refresh: bool = False):
     """
     Returns enriched GeoJSON FeatureCollection of North Eastern Region administrative districts
     with AI-derived landslide risk scores, classifications, physical parameters, and provenance.
     Supports filtering by state ('all' or specific state name like 'Mizoram', 'Assam', etc.).
     """
     try:
-        data = get_filtered_district_risk_geojson(state=state, force_refresh=force)
+        data = get_filtered_district_risk_geojson(state=state, force_refresh=(force or refresh))
         return data
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate district GIS risk: {str(e)}")

@@ -274,6 +274,7 @@ function ensureFullGisMapReady() {
     const currentState = document.getElementById("gisStateFilter")?.value || "ALL";
     if (currentDistrictRiskData) {
       renderDistrictRiskPolygons(currentDistrictRiskData, currentState);
+      updateGisMetadataUI(currentDistrictRiskData);
     } else {
       fetchDistrictRiskData(false);
     }
@@ -333,6 +334,7 @@ function initFullGisMap() {
   if (currentDistrictRiskData) {
     const currentState = document.getElementById("gisStateFilter")?.value || "ALL";
     renderDistrictRiskPolygons(currentDistrictRiskData, currentState);
+    updateGisMetadataUI(currentDistrictRiskData);
   } else {
     fetchDistrictRiskData(false);
   }
@@ -369,7 +371,12 @@ function initFullGisMapControls() {
   const refreshBtn = document.getElementById("gisBtnRefresh");
   if (refreshBtn) {
     refreshBtn.addEventListener("click", () => {
-      fetchDistrictRiskData(true);
+      if (refreshBtn.disabled || districtRiskFetchPromise || isDistrictRiskRefreshing) {
+        return; // Prevent duplicate parallel recalculation requests
+      }
+      fetchDistrictRiskData(true).catch((e) => {
+        // Handled inside fetchDistrictRiskData with non-intrusive toast notification
+      });
     });
   }
 
@@ -457,81 +464,203 @@ function switchBasemapLayer(layerKey) {
   }
 }
 
-async function fetchDistrictRiskData(forceRefresh = false) {
-  const refreshIcon = document.getElementById("gisRefreshIcon");
-  if (refreshIcon) refreshIcon.classList.add("spin");
+let districtRiskFetchPromise = null;
+let isDistrictRiskRefreshing = false;
 
+function formatGisLastUpdated(isoString) {
+  if (!isoString) return "Last Updated: Unknown";
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return `Last Updated: ${isoString}`;
+    const dateStr = d.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+    const timeStr = d.toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+    return `Last Updated: ${dateStr}, ${timeStr}`;
+  } catch (e) {
+    return `Last Updated: ${isoString}`;
+  }
+}
+
+function formatGisLegendUpdated(isoString) {
+  if (!isoString) return "Updated: --";
+  try {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return `Updated: ${isoString}`;
+    const timeStr = d.toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+    return `Updated: ${timeStr}`;
+  } catch (e) {
+    return `Updated: ${isoString}`;
+  }
+}
+
+function showGisToast(msg, isError = true) {
+  const toast = document.getElementById("gisToastAlert");
+  const toastMsg = document.getElementById("gisToastAlertMsg");
+  if (!toast || !toastMsg) return;
+
+  toastMsg.textContent = msg;
+  toast.style.background = isError ? "rgba(239, 68, 68, 0.95)" : "rgba(34, 197, 94, 0.95)";
+  toast.style.display = "inline-flex";
+
+  if (window.gisToastTimer) {
+    clearTimeout(window.gisToastTimer);
+  }
+  window.gisToastTimer = setTimeout(() => {
+    toast.style.display = "none";
+  }, 4500);
+}
+
+function updateGisMetadataUI(data) {
+  if (!data) return;
+
+  // 1. Districts count
+  const countText = document.getElementById("gisDistrictsCountText");
+  if (countText && data.features) {
+    countText.textContent = `${data.features.length} Districts`;
+  }
+
+  // 2. Model badge
+  const modelBadge = document.getElementById("gisModelBadgeText");
+  if (modelBadge && data.metadata) {
+    modelBadge.textContent = `Model: ${data.metadata.hazard_model_version || data.metadata.model_version || "RIFT V2"}`;
+  }
+
+  // 3. Legend model version
+  const legendModel = document.getElementById("gisLegendModelVer");
+  if (legendModel && data.metadata) {
+    legendModel.textContent = data.metadata.model_version || "rift_landslide_model_v2";
+  }
+
+  // 4. Real Last Updated timestamp
+  const updatedIso = data.metadata && data.metadata.updated_at;
+  const lastUpdatedEl = document.getElementById("gisLastUpdatedText");
+  if (lastUpdatedEl && updatedIso) {
+    lastUpdatedEl.textContent = formatGisLastUpdated(updatedIso);
+  }
+
+  // 5. Legend Last Updated timestamp
+  const legendUpdated = document.getElementById("gisLegendUpdated");
+  if (legendUpdated && updatedIso) {
+    legendUpdated.textContent = formatGisLegendUpdated(updatedIso);
+  }
+}
+
+async function fetchDistrictRiskData(forceRefresh = false) {
+  // If data is already loaded in memory and not a forced user refresh, use cached data instantly
+  if (!forceRefresh && currentDistrictRiskData) {
+    updateGisMetadataUI(currentDistrictRiskData);
+    if (fullGisMap) {
+      const currentState = document.getElementById("gisStateFilter")?.value || "ALL";
+      renderDistrictRiskPolygons(currentDistrictRiskData, currentState);
+    }
+    return currentDistrictRiskData;
+  }
+
+  // If a request is already in-flight:
+  // - If it's a normal request and another normal request comes in: reuse pending promise
+  // - If it's a force refresh and already refreshing: reuse pending promise to prevent duplicate parallel execution
+  if (districtRiskFetchPromise) {
+    return districtRiskFetchPromise;
+  }
+
+  const refreshBtn = document.getElementById("gisBtnRefresh");
+  const refreshBtnText = document.getElementById("gisBtnRefreshText");
+  const refreshIcon = document.getElementById("gisRefreshIcon");
   const statusOverlay = document.getElementById("gisMapStatusOverlay");
   const statusMsg = document.getElementById("gisStatusMessage");
   const btnRetry = document.getElementById("gisBtnRetryLoad");
-  
-  if (!currentDistrictRiskData && statusOverlay) {
-    statusOverlay.style.display = "flex";
-    if (statusMsg) statusMsg.textContent = "Loading NER District Risk Intelligence...";
-    if (btnRetry) btnRetry.style.display = "none";
-  }
 
-  try {
-    const url = `/api/gis/risk-districts?state=all${forceRefresh ? '&refresh=true' : ''}`;
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+  if (forceRefresh) {
+    isDistrictRiskRefreshing = true;
+    if (refreshBtn) {
+      refreshBtn.disabled = true;
+      refreshBtn.classList.add("disabled");
     }
-    const data = await response.json();
-    currentDistrictRiskData = data;
-
-    if (statusOverlay) {
-      statusOverlay.style.display = "none";
+    if (refreshBtnText) {
+      refreshBtnText.textContent = "Refreshing...";
     }
-
-    // Update metadata headers
-    const countText = document.getElementById("gisDistrictsCountText");
-    if (countText && data.features) {
-      countText.textContent = `${data.features.length} Districts`;
-    }
-
-    const modelBadge = document.getElementById("gisModelBadgeText");
-    if (modelBadge && data.metadata) {
-      modelBadge.textContent = `Model: ${data.metadata.hazard_model_version || data.metadata.model_version || "RIFT V2"}`;
-    }
-
-    const legendModel = document.getElementById("gisLegendModelVer");
-    if (legendModel && data.metadata) {
-      legendModel.textContent = data.metadata.model_version || "rift_landslide_model_v2";
-    }
-
-    const legendUpdated = document.getElementById("gisLegendUpdated");
-    if (legendUpdated && data.metadata && data.metadata.updated_at) {
-      try {
-        const d = new Date(data.metadata.updated_at);
-        legendUpdated.textContent = `Updated: ${d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
-      } catch (e) {
-        legendUpdated.textContent = "Updated: Just now";
-      }
-    }
-
-    // Render features with current state filter ONLY IF fullGisMap is ready
-    if (fullGisMap) {
-      const currentState = document.getElementById("gisStateFilter")?.value || "ALL";
-      renderDistrictRiskPolygons(data, currentState);
-    }
-
-    console.log(`[RIFT GIS] Loaded ${data.features ? data.features.length : 0} district risk boundaries successfully.`);
-  } catch (err) {
-    console.error("[RIFT GIS] Error fetching district risk data:", err);
-    if (statusOverlay) {
-      statusOverlay.style.display = "flex";
-      if (statusMsg) statusMsg.textContent = "Live GIS Risk Data Currently Unavailable";
-      if (btnRetry) {
-        btnRetry.style.display = "inline-flex";
-        btnRetry.onclick = () => fetchDistrictRiskData(true);
-      }
-    }
-  } finally {
     if (refreshIcon) {
-      setTimeout(() => refreshIcon.classList.remove("spin"), 500);
+      refreshIcon.classList.add("spin");
+    }
+  } else {
+    // Normal initial load without existing data: show non-intrusive status overlay
+    if (!currentDistrictRiskData && statusOverlay) {
+      statusOverlay.style.display = "flex";
+      if (statusMsg) statusMsg.textContent = "Loading NER District Risk Intelligence...";
+      if (btnRetry) btnRetry.style.display = "none";
     }
   }
+
+  districtRiskFetchPromise = (async () => {
+    try {
+      const url = `/api/gis/risk-districts?state=all${forceRefresh ? '&force=true' : ''}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}: ${response.statusText}`);
+      }
+      const data = await response.json();
+      currentDistrictRiskData = data;
+
+      if (statusOverlay) {
+        statusOverlay.style.display = "none";
+      }
+
+      // Update all UI labels, badges, and the real Last Updated timestamp
+      updateGisMetadataUI(data);
+
+      // Render features with current state filter ONLY IF fullGisMap is ready
+      if (fullGisMap) {
+        const currentState = document.getElementById("gisStateFilter")?.value || "ALL";
+        renderDistrictRiskPolygons(data, currentState);
+      }
+
+      console.log(`[RIFT GIS] Loaded ${data.features ? data.features.length : 0} district risk boundaries successfully.`);
+      return data;
+    } catch (err) {
+      console.error("[RIFT GIS] Error fetching district risk data:", err);
+      if (currentDistrictRiskData) {
+        // Retain previously displayed valid map, do not wipe map or timestamp
+        showGisToast("Failed to refresh live GIS risk data. Showing previously verified map.", true);
+      } else {
+        // Initial load failure with no prior data: show overlay
+        if (statusOverlay) {
+          statusOverlay.style.display = "flex";
+          if (statusMsg) statusMsg.textContent = "Live GIS Risk Data Currently Unavailable";
+          if (btnRetry) {
+            btnRetry.style.display = "inline-flex";
+            btnRetry.onclick = () => fetchDistrictRiskData(true);
+          }
+        }
+      }
+      throw err;
+    } finally {
+      districtRiskFetchPromise = null;
+      isDistrictRiskRefreshing = false;
+      if (refreshBtn) {
+        refreshBtn.disabled = false;
+        refreshBtn.classList.remove("disabled");
+      }
+      if (refreshBtnText) {
+        refreshBtnText.textContent = "Refresh Map";
+      }
+      if (refreshIcon) {
+        refreshIcon.classList.remove("spin");
+      }
+    }
+  })();
+
+  return districtRiskFetchPromise;
 }
 
 function getPolygonFillOpacityForZoom(zoom) {

@@ -3633,6 +3633,23 @@ body.light-theme .popup-action-body {
   align-items: center;
   gap: 7px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s ease;
+}
+
+#gisBtnRefresh:disabled,
+#gisBtnRefresh.disabled {
+  opacity: 0.65;
+  cursor: not-allowed !important;
+  pointer-events: none;
+}
+
+.spin {
+  animation: spin 0.85s linear infinite !important;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 /* Map Status & Error Overlay */
@@ -3711,6 +3728,13 @@ body.light-theme #gisBtnRefresh.btn-secondary {
   border-color: #cbd5e1;
   color: #0f172a;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+body.light-theme #gisBtnRefresh:disabled,
+body.light-theme #gisBtnRefresh.disabled {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #94a3b8;
 }
 
 body.light-theme .gis-map-status-overlay {
