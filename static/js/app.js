@@ -166,6 +166,7 @@ const GIS_BASEMAP_PROVIDERS = {
   },
   satellite: {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    labelUrl: 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
     options: {
       maxZoom: 18,
       attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and GIS Community'
@@ -180,18 +181,34 @@ const GIS_BASEMAP_PROVIDERS = {
   }
 };
 
+function createGisBasemapLayer(layerKey) {
+  const provider = GIS_BASEMAP_PROVIDERS[layerKey];
+  if (!provider) return null;
+  if (provider.labelUrl) {
+    const baseTileLayer = L.tileLayer(provider.url, provider.options);
+    const labelTileLayer = L.tileLayer(provider.labelUrl, {
+      ...provider.options,
+      pane: 'tilePane'
+    });
+    return L.layerGroup([baseTileLayer, labelTileLayer]);
+  }
+  return L.tileLayer(provider.url, provider.options);
+}
+
 let dashBasemapTileLayer = null;
 let activeDashBasemapKey = "street";
 
 function switchDashBasemapLayer(layerKey) {
   if (!GIS_BASEMAP_PROVIDERS[layerKey] || !gisMap) return;
-  if (layerKey === activeDashBasemapKey) return;
+  if (layerKey === activeDashBasemapKey && dashBasemapTileLayer) return;
   activeDashBasemapKey = layerKey;
   if (dashBasemapTileLayer) {
     gisMap.removeLayer(dashBasemapTileLayer);
   }
-  const provider = GIS_BASEMAP_PROVIDERS[layerKey];
-  dashBasemapTileLayer = L.tileLayer(provider.url, provider.options).addTo(gisMap);
+  dashBasemapTileLayer = createGisBasemapLayer(layerKey);
+  if (dashBasemapTileLayer) {
+    dashBasemapTileLayer.addTo(gisMap);
+  }
   document.querySelectorAll(".dash-layer-btn").forEach(btn => {
     btn.classList.toggle("active", btn.getAttribute("data-layer") === layerKey);
   });
@@ -204,11 +221,7 @@ function initGisMap() {
   const mapElement = document.getElementById("gisMap");
   if (mapElement && !gisMap) {
     gisMap = L.map("gisMap").setView([25.5788, 92.5], 7);
-    dashBasemapTileLayer = L.tileLayer(GIS_BASEMAP_PROVIDERS.street.url, {
-      ...GIS_BASEMAP_PROVIDERS.street.options,
-      maxZoom: 18,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors'
-    }).addTo(gisMap);
+    dashBasemapTileLayer = createGisBasemapLayer("street").addTo(gisMap);
 
     // Setup dashboard basemap layer switchers (Street / Satellite / Terrain)
     const dashStreet = document.getElementById("dashBtnStreet");
@@ -286,10 +299,7 @@ function initFullGisMap() {
   window.fullGisMap = fullGisMap;
 
   // Default to OpenStreetMap Standard basemap
-  currentBasemapTileLayer = L.tileLayer(
-    GIS_BASEMAP_PROVIDERS.street.url, 
-    GIS_BASEMAP_PROVIDERS.street.options
-  ).addTo(fullGisMap);
+  currentBasemapTileLayer = createGisBasemapLayer("street").addTo(fullGisMap);
 
   // Setup Basemap switchers, state filter, and refresh controls
   initFullGisMapControls();
@@ -422,7 +432,7 @@ function initFullGisMapControls() {
 
 function switchBasemapLayer(layerKey) {
   if (!GIS_BASEMAP_PROVIDERS[layerKey] || !fullGisMap) return;
-  if (layerKey === activeBasemapKey) return;
+  if (layerKey === activeBasemapKey && currentBasemapTileLayer) return;
 
   activeBasemapKey = layerKey;
 
@@ -436,8 +446,10 @@ function switchBasemapLayer(layerKey) {
     fullGisMap.removeLayer(currentBasemapTileLayer);
   }
 
-  const provider = GIS_BASEMAP_PROVIDERS[layerKey];
-  currentBasemapTileLayer = L.tileLayer(provider.url, provider.options).addTo(fullGisMap);
+  currentBasemapTileLayer = createGisBasemapLayer(layerKey);
+  if (currentBasemapTileLayer) {
+    currentBasemapTileLayer.addTo(fullGisMap);
+  }
 
   // Keep district polygons on top
   if (gisDistrictGeoJsonLayer) {
